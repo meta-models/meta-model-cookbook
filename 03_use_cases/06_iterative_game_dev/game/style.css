@@ -1,0 +1,7 @@
+html,body{margin:0;height:100%;background:#000;color:#fff;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overflow:hidden}
+#c{display:block;width:100vw;height:100vh}
+#hud{position:fixed;left:16px;top:16px;z-index:10;background:#0008;padding:10px 14px;border-radius:10px;backdrop-filter:blur(6px);font-size:14px;min-width:150px}
+#hud div{margin:4px 0}
+#hud span{opacity:.7;margin-right:8px}
+#hud b{font-size:18px}
+.hint{opacity:.6;font-size:12px;margin-top:8px !important}

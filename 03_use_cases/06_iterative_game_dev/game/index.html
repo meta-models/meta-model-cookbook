@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Solar Kart</title>
+<link rel="stylesheet" href="style.css">
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+<div id="hud">
+  <div><span>Speed</span><b id="speed">0</b> km/h</div>
+  <div><span>Lap</span><b id="lap">0</b></div>
+  <div class="hint">WASD / Arrows — drive</div>
+</div>
+<canvas id="c"></canvas>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

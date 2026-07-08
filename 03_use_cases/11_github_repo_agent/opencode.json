@@ -1,0 +1,20 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "provider": {
+    "model_api": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "Meta Model API",
+      "options": {
+        "baseURL": "https://api.meta.ai/v1",
+        "apiKey": "{env:MODEL_API_KEY}"
+      },
+      "models": {
+        "muse-spark-1.1": {
+          "name": "Muse Spark",
+          "limit": { "context": 1048576, "output": 131072 }
+        }
+      }
+    }
+  },
+  "model": "model_api/muse-spark-1.1"
+}

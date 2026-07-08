@@ -1,0 +1,9 @@
+{
+  "probe_valid": true,
+  "self_assess_valid": true,
+  "patterns_count": 5,
+  "signals_count": 5,
+  "proposals_count": 8,
+  "turns": 3,
+  "model": "muse-spark-1.1"
+}

@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+.env
+.env.local
+*.db
+.ipynb_checkpoints/
+state/
+artifacts/runs/
+artifacts/*.log
+.DS_Store

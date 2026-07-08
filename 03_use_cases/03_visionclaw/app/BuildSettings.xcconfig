@@ -1,0 +1,26 @@
+// Default build settings for VisionClaw.
+//
+// Real values go in Secrets.xcconfig (git-ignored), which is #include?-ed at the
+// bottom and overrides the defaults here. Copy Secrets.example.xcconfig →
+// Secrets.xcconfig to get started. The defaults below let the project build
+// unsigned (Simulator / generic iOS) without any secrets.
+
+// --- Signing -----------------------------------------------------------------
+// Apple Developer Team ID (Signing & Capabilities). Leave empty for unsigned
+// Simulator / generic builds; required to run on a physical device.
+DEVELOPMENT_TEAM =
+
+// --- Meta Wearables (DAT) ----------------------------------------------------
+// In Meta AI Developer Mode keep META_APP_ID = 0 and CLIENT_TOKEN empty. For
+// production, use the values from the Wearables Developer Center.
+META_APP_ID = 0
+CLIENT_TOKEN =
+
+// --- OpenClaw gateway --------------------------------------------------------
+// The app talks to your OpenClaw gateway over HTTP on the LAN/tailnet (never to
+// Meta directly). Host is your Mac's bonjour name or IP; default port is 18789.
+GATEWAY_HOST = your-mac.local
+GATEWAY_PORT = 18789
+GATEWAY_TOKEN =
+
+#include? "Secrets.xcconfig"

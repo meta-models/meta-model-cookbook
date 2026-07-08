@@ -1,0 +1,13 @@
+# Secrets - copy Secrets.example.xcconfig to Secrets.xcconfig and fill in locally.
+Secrets.xcconfig
+
+# XcodeGen output - the project is generated from project.yml, never committed.
+*.xcodeproj
+
+# Build artifacts
+build/
+DerivedData/
+*.xcuserstate
+.swiftpm/
+xcuserdata/
+*.log

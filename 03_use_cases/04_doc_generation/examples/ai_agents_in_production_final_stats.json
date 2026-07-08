@@ -1,0 +1,41 @@
+{
+  "topic": "AI Agents in Production",
+  "model": "muse-spark-1.1",
+  "pipeline_duration_seconds": 136.2,
+  "steps": {
+    "research": {
+      "web_searches": 5,
+      "search_queries": [
+        "AI Agents in Production 2025 key concepts overview",
+        "AI Agents production tools frameworks LangChain CrewAI 2025",
+        "AI Agents production case studies enterprise 2025 real world deployments",
+        "AI Agents production challenges failures pitfalls 2025",
+        "AI Agents production trends 2025 2026 multi-agent MCP governance"
+      ],
+      "citations_found": 0,
+      "citation_urls": []
+    },
+    "outline": {
+      "slide_count": 12,
+      "layouts_used": [
+        "comparison",
+        "references",
+        "title",
+        "summary",
+        "content",
+        "code"
+      ]
+    },
+    "design": {
+      "output_file": "ai_agents_in_production_slides.html",
+      "output_size_kb": 32.7
+    }
+  },
+  "totals": {
+    "web_searches": 5,
+    "tokens": 116677,
+    "duration_seconds": 136.2,
+    "slide_count": 12,
+    "sources_cited": 8
+  }
+}

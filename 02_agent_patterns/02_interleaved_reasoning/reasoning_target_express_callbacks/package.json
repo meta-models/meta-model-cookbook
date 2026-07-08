@@ -1,0 +1,26 @@
+{
+  "name": "reasoning-target-express-callbacks",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Practice Express + TypeScript API written in callback / event-emitter style, for the OpenCode interleaved-reasoning recipe. The migration tasks convert it to async/await.",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "jest",
+    "boot-check": "tsx scripts/boot-check.ts",
+    "start": "tsx src/server.ts"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/jest": "^29.5.12",
+    "@types/node": "^20.14.0",
+    "@types/supertest": "^6.0.2",
+    "jest": "^29.7.0",
+    "supertest": "^7.0.0",
+    "ts-jest": "^29.2.5",
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.4"
+  }
+}

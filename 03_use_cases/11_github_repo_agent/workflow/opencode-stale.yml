@@ -1,0 +1,33 @@
+# Stale scan: weekly cron. Warns + labels inactive issues; never auto-closes.
+name: opencode-stale
+
+on:
+  schedule:
+    - cron: "0 9 * * 1"   # Mondays 09:00 UTC
+  workflow_dispatch: {}     # allow manual runs from the Actions tab
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+      issues: write          # comment + apply the `stale` label
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: anomalyco/opencode/github@latest
+        env:
+          MODEL_API_KEY: ${{ secrets.MODEL_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          model: model_api/muse-spark-1.1
+          agent: stale
+          use_github_token: true
+          prompt: |
+            Run the scheduled stale-issue scan. List open issues, find those inactive
+            for 30+ days, skip protected labels (roadmap, priority, pinned, wontfix,
+            in-progress), post a friendly warning, and apply the `stale` label. Do not
+            close anything. Summarize which issues you warned.

@@ -1,0 +1,89 @@
+{
+  "narrative": "I correctly diagnosed the fatigue driver as recurring 2-4am checkout/payments/inventory alerts concentrated on alex (66.7% recurrence, 73.8% owner share), and my signals tracked that snapshot. However my purpose/signals are overfitted: hard-coding alex, 3 components, and a fixed 02-04 UTC window risks noise-shifting blind spots, and the owner count-down signal encourages whack-a-mole vs fair distribution. I lack alert quality/triage signals (silencing is only 7.1%, no MTTR/flap dampening), and my recurrence/night signals are siloed missing their intersection \u2013 the actual sleep disruption driver. Memory is quantitative but has no root-cause hypothesis (nightly batch) and no brittleness note.",
+  "proposals": [
+    {
+      "kind": "purpose",
+      "risk": "high",
+      "rationale": "Current purpose hard-codes alex + checkout/payments/inventory + 02-04am \u2013 brittle to noise migration and owner churn. Broaden to durable noise/fatigue reduction with balanced ownership.",
+      "payload": {
+        "statement": "Reduce actionable alert noise and flapping for BrewBean POS SRE, protecting overnight on-call focus time through balanced ownership and sustainable triage, not owner/component-specific whack-a-mole.",
+        "rationale": "Preserves overnight/fatigue intent while removing snapshot overfitting to alex and 3 components"
+      }
+    },
+    {
+      "kind": "signal",
+      "risk": "low",
+      "rationale": "count(owner='alex') down can pass while Priya becomes the new bottleneck. Track distribution fairness to protect on-call health.",
+      "payload": {
+        "source_connector": "alerts_db",
+        "extraction": "max(count by owner) / count(alerts) per day",
+        "direction": "down",
+        "role": "leading",
+        "unit": "ratio",
+        "proxy_strength": "strong",
+        "rationale": "Prevents shifting load from alex to priya; measures on-call concentration risk vs single-owner count"
+      }
+    },
+    {
+      "kind": "signal",
+      "risk": "low",
+      "rationale": "Low 7.1% silencing with 66.7% recurrence indicates missing flap dampening/triage hygiene. Volume-only signals miss quality.",
+      "payload": {
+        "source_connector": "alerts_db",
+        "extraction": "count(silenced=true) / count(alerts) per day",
+        "direction": "up",
+        "role": "leading",
+        "unit": "ratio",
+        "proxy_strength": "weak",
+        "rationale": "Tracks appropriate suppression/triage maturity for flapping overnight alerts, complementing pure volume reduction"
+      }
+    },
+    {
+      "kind": "signal",
+      "risk": "low",
+      "rationale": "Current leading signals track recurrence and 02-04am separately, missing the core fatigue intersection that drives sleep disruption.",
+      "payload": {
+        "source_connector": "alerts_db",
+        "extraction": "count(recurring=true AND timestamp hour between 02:00-04:00 UTC) / count(alerts) per day",
+        "direction": "down",
+        "role": "leading",
+        "unit": "ratio",
+        "proxy_strength": "strong",
+        "rationale": "Direct proxy for overnight flap fatigue \u2013 the actual on-call focus killer, stronger than either signal alone"
+      }
+    },
+    {
+      "kind": "memory",
+      "risk": "low",
+      "rationale": "Memory is pure counts with no root cause hypothesis or metric brittleness warning, leading to owner-whack-a-mole recommendations.",
+      "payload": {
+        "content": "2-4am checkout/payments/inventory flaps correlate with nightly inventory sync/batch jobs \u2013 investigate flap dampening / SLO burn thresholds before owner rebalancing. Owner concentration metric (alex@brewbean.example, 73.8%) is snapshot-brittle \u2013 track max owner share for fairness, not a named individual.",
+        "tier": "operational"
+      }
+    },
+    {
+      "kind": "scenario",
+      "risk": "low",
+      "rationale": "Component signal only watches checkout/payments/inventory, allowing noise migration to go undetected while north-star stays flat.",
+      "payload": {
+        "scenario": "Noise migrates from checkout/payments/inventory to auth/catalog, keeping total alerts/day flat \u2013 current component signal gives false green"
+      }
+    },
+    {
+      "kind": "scenario",
+      "risk": "low",
+      "rationale": "Single-owner count signal is gameable; need test for load-shifting failure mode.",
+      "payload": {
+        "scenario": "Alex alert count drops to 5/day but Priya/ops absorb load, max owner share stays >70% \u2013 owner='alex' signal passes while on-call bottleneck persists"
+      }
+    },
+    {
+      "kind": "scenario",
+      "risk": "low",
+      "rationale": "Fixed 02-04 UTC window is brittle to schedule drift / DST / job slippage.",
+      "payload": {
+        "scenario": "Overnight alerts shift to 04-06am UTC due to batch job slippage, preserving sleep disruption \u2013 fixed 02-04am signal misses fatigue regression"
+      }
+    }
+  ]
+}

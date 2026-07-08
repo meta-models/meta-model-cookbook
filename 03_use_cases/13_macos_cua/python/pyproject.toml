@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "metacua"
+version = "1.0.0"
+description = "Terminal-first macOS computer-use agent for Muse Spark"
+readme = "README.md"
+requires-python = ">=3.9"
+classifiers = ["Operating System :: MacOS"]
+dependencies = [
+    # pyobjc frameworks that expose the native macOS APIs the agent drives:
+    #   Quartz         -> CGEvent / CGDisplay / CoreAnimation / screen-capture access
+    #   Cocoa (AppKit) -> NSWorkspace / NSScreen / NSWindow / NSBitmapImageRep
+    #   ApplicationServices -> AXIsProcessTrusted (Accessibility permission)
+    "pyobjc-framework-Quartz>=9.0",
+    "pyobjc-framework-Cocoa>=9.0",
+    "pyobjc-framework-ApplicationServices>=9.0",
+]
+
+[project.scripts]
+metacua = "metacua.__main__:main"
+
+[project.urls]
+Repository = "https://github.com/par-msl/meta-model-cookbook"
+
+[project.optional-dependencies]
+test = ["pytest"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["metacua*"]

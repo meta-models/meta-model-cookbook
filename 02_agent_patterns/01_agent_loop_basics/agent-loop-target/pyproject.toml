@@ -1,0 +1,12 @@
+[project]
+name = "agent-loop-target"
+version = "0.1.0"
+description = "Practice repo for the Basic Agent Loop recipe: five bugs, each with a failing test that defines 'done'."
+requires-python = ">=3.10"
+
+[tool.pytest.ini_options]
+# Make `pytest` work from the repo root with no install step — the agent (and you)
+# can just run `pytest` and see the five failures.
+pythonpath = ["."]
+testpaths = ["tests"]
+addopts = "-q"

@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Agents in Production – From Prototypes to Enterprise-Grade Autonomous Systems</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/highlight/monokai.css">
+
+<style>
+:root {
+  --bg-900: #06091a;
+  --bg-800: #0b1030;
+  --bg-700: #131943;
+  --glass: rgba(255,255,255,0.055);
+  --glass-strong: rgba(255,255,255,0.078);
+  --glass-border: rgba(255,255,255,0.13);
+  --text: #e9ecf8;
+  --muted: #9aa3c7;
+  --dim: #6b7398;
+  --indigo: #8b7dff;
+  --violet: #b47aff;
+  --cyan: #2dd4bf;
+  --emerald: #34d399;
+  --amber: #fbbf24;
+  --rose: #ff6b8a;
+  --shadow: 0 20px 80px rgba(0,0,0,0.45);
+}
+
+* { box-sizing: border-box; }
+
+html, body { height: 100%; }
+
+body {
+  background: #06091a;
+  color: var(--text);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Aurora background */
+.reveal-viewport {
+  background:
+    radial-gradient(1200px 800px at 15% -10%, rgba(124,108,255,0.22), transparent 60%),
+    radial-gradient(1000px 700px at 95% 10%, rgba(45,212,191,0.14), transparent 55%),
+    radial-gradient(900px 600px at 80% 95%, rgba(180,122,255,0.14), transparent 55%),
+    linear-gradient(180deg, #070a1d 0%, #06091a 45%, #050716 100%);
+}
+
+.aurora {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+.aurora span {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(90px);
+  opacity: 0.55;
+}
+.aurora span:nth-child(1){ width:520px; height:520px; left:-80px; top:-120px; background: rgba(124,108,255,0.22);}
+.aurora span:nth-child(2){ width:440px; height:440px; right:-60px; top:30px; background: rgba(45,212,191,0.16);}
+.aurora span:nth-child(3){ width:480px; height:380px; left:52%; bottom:-140px; background: rgba(180,122,255,0.16);}
+
+.reveal {
+  font-family: 'Inter', sans-serif;
+  font-size: 35px;
+  color: var(--text);
+}
+
+.reveal .slides {
+  text-align: left;
+}
+
+.reveal h1, .reveal h2, .reveal h3 {
+  font-family: 'Inter', sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  text-transform: none;
+  line-height: 1.08;
+  color: var(--text);
+  margin: 0 0 .35em 0;
+}
+
+.reveal h1 { font-size: 1.82em; }
+.reveal h2 { font-size: 1.32em; }
+.reveal h3 { font-size: 1em; }
+
+.reveal p, .reveal li {
+  font-size: 0.73em;
+  line-height: 1.62;
+  color: #d7dcef;
+}
+
+.reveal strong { color: #fff; font-weight: 700; }
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(100deg, #d8d4ff 0%, #8b7dff 32%, #2dd4bf 68%, #6ee7c8 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Title slide */
+.title-slide-inner {
+  max-width: 1060px;
+}
+.eyebrow {
+  display:inline-flex;
+  align-items:center;
+  gap:10px;
+  font-size: 0.42em;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--cyan);
+  font-weight: 700;
+  background: rgba(45,212,191,0.08);
+  border: 1px solid rgba(45,212,191,0.22);
+  padding: 7px 14px;
+  border-radius: 999px;
+  margin-bottom: 22px;
+}
+.title-main {
+  font-size: 2.05em;
+  font-weight: 900;
+  line-height: .98;
+  letter-spacing: -0.035em;
+}
+.title-sub {
+  font-size: 0.7em;
+  color: #b7bdd9;
+  max-width: 760px;
+  margin-top: 18px;
+  line-height: 1.55;
+}
+.title-rule {
+  width: 84px;
+  height: 4px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--indigo), var(--cyan));
+  margin: 26px 0 22px;
+}
+.title-meta {
+  display:flex; flex-wrap:wrap; gap:12px; margin-top: 16px;
+}
+.chip {
+  font-size: 0.38em;
+  color: #aeb6d8;
+  border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(255,255,255,0.045);
+  padding: 7px 12px;
+  border-radius: 999px;
+  backdrop-filter: blur(8px);
+}
+
+/* Section header bar */
+.section-kicker {
+  font-size: 0.38em;
+  text-transform: uppercase;
+  letter-spacing: .16em;
+  color: var(--cyan);
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+.section-head {
+  margin-bottom: 24px;
+}
+.section-head h2 { margin-bottom: 4px; }
+.section-head::after{
+  content:"";
+  display:block;
+  width:54px; height:3px;
+  background: linear-gradient(90deg, var(--indigo), var(--cyan));
+  border-radius: 3px;
+  margin-top: 13px;
+  opacity: .95;
+}
+
+/* Glass card */
+.glass-card {
+  background: linear-gradient(180deg, rgba(255,255,255,0.069), rgba(255,255,255,0.037));
+  border: 1px solid var(--glass-border);
+  border-radius: 18px;
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.bullet-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+.bullet-grid.single { grid-template-columns: 1fr; }
+
+.bullet-item {
+  display: flex;
+  gap: 13px;
+  align-items: flex-start;
+  padding: 16px 17px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.060), rgba(255,255,255,0.031));
+  border: 1px solid rgba(255,255,255,0.11);
+  backdrop-filter: blur(14px);
+  transition: transform .2s ease, border-color .2s ease;
+}
+.bullet-item:hover { transform: translateY(-2px); border-color: rgba(139,125,255,0.38); }
+.bullet-emoji {
+  font-size: 1.05em;
+  line-height: 1.3;
+  margin-top: 1px;
+  flex-shrink: 0;
+}
+.bullet-text {
+  font-size: .66em;
+  line-height: 1.58;
+  color: #dde2f6;
+}
+
+/* Comparison */
+.compare-wrap {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  margin-top: 8px;
+}
+.compare-card {
+  border-radius: 18px;
+  padding: 22px 22px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.058), rgba(255,255,255,0.030));
+  border: 1px solid rgba(255,255,255,0.13);
+  backdrop-filter: blur(16px);
+  position: relative;
+  overflow: hidden;
+}
+.compare-card.right {
+  box-shadow: 0 0 40px rgba(45,212,191,0.06);
+}
+.compare-card::before{
+  content:"";
+  position:absolute; left:0; top:0; bottom:0; width:4px;
+  background: linear-gradient(180deg, #ff6b7a, #ff9a6b);
+}
+.compare-card.right::before{
+  background: linear-gradient(180deg, var(--cyan), var(--emerald));
+}
+.compare-head {
+  font-weight: 800;
+  font-size: .64em;
+  letter-spacing: -0.01em;
+  margin-bottom: 14px;
+}
+.compare-list { margin:0; padding:0; list-style:none; }
+.compare-list li {
+  font-size: .56em;
+  color: #cbd2ee;
+  padding: 8px 0;
+  border-bottom: 1px dashed rgba(255,255,255,0.10);
+}
+.compare-list li:last-child { border-bottom: 0; }
+.compare-tag {
+  display:inline-block; font-size:.36em; font-weight:700; letter-spacing:.08em; text-transform:uppercase;
+  padding: 4px 9px; border-radius: 999px; margin-bottom:10px;
+}
+.tag-proto { background: rgba(255,107,138,0.10); color:#ffa8b9; border:1px solid rgba(255,107,138,0.25);}
+.tag-prod { background: rgba(45,212,191,0.10); color:#7ef1df; border:1px solid rgba(45,212,191,0.28);}
+
+/* Code */
+.code-shell {
+  border-radius: 18px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(9,12,28,0.72);
+  box-shadow: var(--shadow);
+}
+.code-topbar {
+  display:flex; align-items:center; gap:8px;
+  padding: 12px 16px;
+  background: rgba(255,255,255,0.045);
+  border-bottom: 1px solid rgba(255,255,255,0.11);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .40em;
+  color: #9aa3c7;
+}
+.code-topbar .dot { width:10px; height:10px; border-radius:50%; }
+.dot.r { background:#ff6b7a;} .dot.y{ background:#fbbf24;} .dot.g{ background:#34d399;}
+.reveal pre {
+  margin:0;
+  box-shadow:none;
+  width:100%;
+  font-size: .465em;
+}
+.reveal pre code {
+  max-height: 470px;
+  padding: 20px 22px;
+  font-family: 'JetBrains Mono', monospace;
+  line-height: 1.55;
+  background: transparent;
+}
+.code-notes {
+  display:grid;
+  grid-template-columns: repeat(3,1fr);
+  gap:12px;
+  margin-top:14px;
+}
+.code-note {
+  font-size: .52em;
+  color: #cbd3ef;
+  background: rgba(255,255,255,0.045);
+  border:1px solid rgba(255,255,255,0.11);
+  padding: 12px 14px;
+  border-radius: 13px;
+}
+
+/* Takeaways / summary */
+.takeaways {
+  display:grid;
+  grid-template-columns: repeat(2, minmax(0,1fr));
+  gap: 14px;
+  margin-top: 8px;
+}
+.takeaway {
+  background: linear-gradient(170deg, rgba(255,255,255,0.062), rgba(255,255,255,0.032));
+  border:1px solid rgba(255,255,255,0.12);
+  border-radius: 16px;
+  padding: 18px 18px 17px;
+  position: relative;
+}
+.takeaway b {
+  display:block;
+  font-size: .60em;
+  margin-bottom:6px;
+  color: #f1f3ff;
+}
+.takeaway p {
+  font-size:.53em; color:#c8cee8; margin:0; line-height:1.55;
+}
+.t-num {
+  position:absolute; top:14px; right:14px;
+  font-weight:800; font-size:.42em;
+  color: #77ffe5;
+  opacity:.95;
+}
+
+/* References */
+.ref-grid {
+  display:grid;
+  grid-template-columns: repeat(2, minmax(0,1fr));
+  gap: 12px;
+}
+.ref-card {
+  display:flex; align-items:center; gap:12px;
+  font-size:.48em;
+  color:#c9cfeb;
+  background: rgba(255,255,255,0.045);
+  border:1px solid rgba(255,255,255,0.11);
+  border-radius: 13px;
+  padding: 13px 14px;
+}
+.ref-badge {
+  width:30px; height:30px; border-radius: 9px;
+  display:flex; align-items:center; justify-content:center;
+  font-weight:800; font-size:.82em;
+  background: rgba(139,125,255,0.15);
+  color: #c8bfff;
+  flex-shrink:0;
+}
+.ref-card a { color: #c9cfeb; text-decoration: none; word-break: break-all; }
+.ref-card a:hover { color: #fff; text-decoration: underline; }
+
+/* Footer meta */
+.slide-footer {
+  margin-top: 18px;
+  display:flex; flex-wrap:wrap; gap:8px;
+}
+.source-pill {
+  font-size: .33em;
+  color:#8f97bb;
+  background: rgba(255,255,255,0.038);
+  border:1px solid rgba(255,255,255,0.10);
+  padding: 5px 10px;
+  border-radius: 999px;
+}
+
+/* Reveal chrome */
+.reveal .progress { height: 3px; color: var(--cyan); }
+.reveal .progress span { background: linear-gradient(90deg, #8b7dff, #2dd4bf, #34d399); }
+.reveal .slide-number {
+  background: rgba(10,14,34,0.7);
+  color: #bdc6e8;
+  font-size: 14px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  backdrop-filter: blur(8px);
+}
+.reveal .controls { color: #8b7dff; }
+
+/* Small helper */
+.muted { color: var(--muted); }
+.two-col { display:grid; grid-template-columns: 1fr 1fr; gap:16px;}
+
+@media (max-width: 980px){
+  .bullet-grid, .compare-wrap, .takeaways, .ref-grid, .two-col, .code-notes { grid-template-columns: 1fr; }
+  .reveal { font-size: 30px; }
+}
+</style>
+</head>
+<body>
+
+<div class="aurora" aria-hidden="true"><span></span><span></span><span></span></div>
+
+<div class="reveal">
+<div class="slides">
+
+<!-- 1. TITLE -->
+<section>
+  <div class="title-slide-inner">
+    <div class="eyebrow">Enterprise AI • March 2026</div>
+    <div class="title-main gradient-text">AI Agents<br>in Production</div>
+    <div class="title-rule"></div>
+    <div class="title-sub">From Prototypes to Enterprise-Grade Autonomous Systems — architecture, tooling, real ROI case studies, and the top 5 failure modes that kill 89% of projects.</div>
+    <div class="title-meta">
+      <div class="chip">LangGraph • ADK • Agents SDK</div>
+      <div class="chip">SLAs • Observability • Governance</div>
+      <div class="chip">MCP + A2A v1.0</div>
+    </div>
+  </div>
+  <aside class="notes">Welcome. Today we're moving past chatbot demos to talk about what it actually takes to run goal-driven AI agents reliably, securely, and profitably in production. We'll cover architecture, tooling, real ROI case studies, and the top 5 failure modes.</aside>
+</section>
+
+<!-- 2. What is a Production-Grade Agent? -->
+<section>
+  <div class="section-head">
+    <div class="section-kicker">Foundation</div>
+    <h2>What is a Production-Grade Agent?</h2>
+  </div>
+
+  <div class="bullet-grid single">
+    <div class="bullet-item">
+      <div class="bullet-emoji">🎯</div>
+      <div class="bullet-text"><strong>A goal-driven execution system:</strong> understands a goal, decides actions, executes autonomously, and iterates based on results</div>
+    </div>
+    <div class="bullet-item">
+      <div class="bullet-emoji">🔄</div>
+      <div class="bullet-text"><strong>Agents vs Tools:</strong> Reactive → Proactive, Single prompt → Multi-step reasoning, User-driven → Goal-driven</div>
+    </div>
+    <div class="bullet-item">
+      <div class="bullet-emoji">📈</div>
+      <div class="bullet-text"><strong>Adoption accelerating:</strong> 62% of orgs experimenting, 57% of practitioners now have agents in production</div>
+    </div>
+    <div class="bullet-item">
+      <div class="bullet-emoji">🚀</div>
+      <div class="bullet-text"><strong>The 2025 shift:</strong> Teams no longer ask 'Should we use AI?', they ask 'Which agents do we deploy?'</div>
+    </div>
+  </div>
+
+  <div class="slide-footer">
+    <span class="source-pill">McKinsey – State of AI</span>
+    <span class="source-pill">LangChain – State of AI Agents</span>
+  </div>
+  <aside class="notes">A production agent is not a chatbot. It is an autonomous executor. Adoption is real but hard – only 11% of agentic use cases reached production last year. The gap is reliability, not intelligence.</aside>
+</section>
+
+<!-- 3. Comparison -->
+<section>
+  <div class="section-head">
+    <div class="section-kicker">Reliability gap</div>
+    <h2>Prototype vs. Production-Grade Agents</h2>
+  </div>
+
+  <div class="compare-wrap">
+    <div class="compare-card">
+      <div class="compare-head">Prototype Agent</div>
+      <span class="compare-tag tag-proto">Best effort</span>
+      <ul class="compare-list">
+        <li><strong>Reliability:</strong> Best effort</li>
+        <li><strong>Observability:</strong> Minimal logging</li>
+        <li><strong>Security:</strong> Basic</li>
+        <li><strong>Cost Control:</strong> Manual</li>
+        <li><strong>Governance:</strong> None</li>
+        <li><strong>Scalability:</strong> Limited</li>
+      </ul>
+    </div>
+    <div class="compare-card right">
+      <div class="compare-head">Production-Grade Agent</div>
+      <span class="compare-tag tag-prod">Enterprise Ready</span>
+      <ul class="compare-list">
+        <li><strong>Reliability:</strong> Guaranteed SLAs, circuit breakers, retries</li>
+        <li><strong>Observability:</strong> Full tracing, metrics, evaluation</li>
+        <li><strong>Security:</strong> Enterprise-grade, SOC2 / GDPR / HIPAA</li>
+        <li><strong>Cost Control:</strong> Automated token budgets</li>
+        <li><strong>Governance:</strong> Policy-driven, audit logging</li>
+        <li><strong>Scalability:</strong> Horizontal & elastic</li>
+      </ul>
+    </div>
+  </div>
+
+  <div style="margin-top:14px; font-size:.55em; color:#aeb7d8;">The gap is operational rigor, not model intelligence.</div>
+
+  <div class="slide-footer">
+    <span class="source-pill">langchain.com/state-of-ai-agents</span>
+    <span class="source-pill">Microsoft AI Red Teaming</span>
+  </div>
+  <aside class="notes">This table is why 89% of agent projects stall. Production requires SLAs, observability, cost control, and governance. You can't bolt these on after – they are architectural requirements.</aside>
+</section>
+
+<!-- 4. 7-Layer Stack -->
+<section>
+  <div class="section-head">
+    <div class="section-kicker">Architecture</div>
+    <h2>The 7-Layer Production Agent Stack</h2>
+  </div>
+
+  <div class="bullet-grid">
+    <div class="bullet-item">
+      <div class="bullet-emoji">🧱</div>
+      <div class="bullet-text"><strong>Foundation:</strong> Generative Model + Knowledge Base / RAG + Memory (short/long-term, vector stores)</div>
+    </div>
+    <div class="bullet-item">
+      <div class="bullet-emoji">⚙️</div>
+      <div class="bullet-text"><strong>Execution:</strong> Orchestration / State Management + Tool Calling & Integrations with permission-scoped APIs</div>
+    </div>
+    <div class="bullet-item">
+      <div class="bullet-emoji">🛡️</div>
+      <div class="bullet-text"><strong>Control:</strong> Policy, Guardrails & Governance Layer — RBAC, data masking, human-in-the-loop checkpoints</div>
+    </div>
+    <div class="bullet-item">
+      <div class="bullet-emoji">📊</div>
+      <div class="bullet-text"><strong>Operations:</strong> Evaluation & Observability — traces, success/latency/cost metrics, prompt versioning</div>
+    </div>
+    <div class="bullet-item" style="grid-column: 1 / -1;">
+      <div class="bullet-emoji">🧩</div>
+      <div class="bullet-text"><strong>The Agent is only one layer.</strong> A real production system is a pipeline handling routing, control, and validation. Use a multi-provider AI gateway with failover.</div>
+    </div>
+  </div>
+
+  <div class="slide-footer">
+    <span class="source-pill">LangChain</span>
+    <span class="source-pill">OpenAI Agents SDK</span>
+    <span class="source-pill">Google Vertex ADK</span>
+  </div>
+  <aside class="notes">Stop building monolithic agents. Build a 7-layer stack. Treat RAG, tools, and orchestration as traceable, testable subsystems. Use a multi-provider AI gateway with failover.</aside>
+</section>
+
+<!-- 5. CODE -->
+<section>
+  <div class="section-head">
+    <div class="section-kicker">Production pattern</div>
+    <h2>Code: Production Guardrails in LangGraph</h2>
+  </div>
+
+  <div class="code-shell">
+    <div class="code-topbar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span style="margin-left:8px">agent_guardrails.py — Python 3.12</span></div>
+<pre><code class="language-python">from langgraph.graph import StateGraph
+from pydantic import BaseModel
+
+class AgentState(BaseModel):
+    iterations: int = 0
+    max_steps: int = 8
+
+def tool_node(state: AgentState):
+    # 1. Strict schema validation + allowlist
+    assert tool_call.name in ALLOWED_TOOLS
+    result = execute_with_timeout(tool_call, 5.0)
+    
+    # 2. Explicit error handling
+    if not result.ok:
+        return {"error": result.error, "fallback": True}
+    return result
+
+# 3. Loop protection + cost control
+graph.add_conditional_edges(
+    "agent",
+    lambda s: "end" if s.iterations >= s.max_steps else "tools"
+)
+
+# 4. Full tracing
+graph = graph.compile(checkpointer=PostgresSaver())</code></pre>
+  </div>
+
+  <div class="code-notes">
+    <div class="code-note">🔒 Strict tool schemas and explicit allowlists prevent hallucinated calls</div>
+    <div class="code-note">🔁 Iteration limits and timeouts stop infinite loops</div>
+    <div class="code-note">💾 Full state checkpointing enables time-travel debugging</div>
+  </div>
+
+  <div class="slide-footer">
+    <span class="source-pill">LangChain – State of AI Agents</span>
+    <span class="source-pill">OpenAI Agents SDK</span>
+  </div>
+  <aside class="notes">This is the production pattern. Allowlist tools, validate schemas before execution, cap iterations at 8, handle errors explicitly, and trace everything. Teams trade intelligence for predictability to be able to sleep at night.</aside>
+</section>
+
+<!-- 6. Tools & Frameworks -->
+<section>
+  <div class="section-head">
+    <div class="section-kicker">Landscape 2025/2026</div>
+    <h2>Tools & Frameworks Landscape</h2>
+  </div>
+
+  <div class="bullet-grid">
+    <div class="bullet-item">
+      <div class="bullet-emoji">🕸️</div>
+      <div class="bullet-text"><strong>LangGraph:</strong> Stateful, graph-based production agents with visual / time-travel debugging — Python</div>
+    </div>
+    <div class="bullet-item">
+      <div class="bullet-emoji">👥</div>
+      <div class="bullet-text"><strong>CrewAI / AutoGen:</strong> Multi-agent role-based teams and research debates with human-in-the-loop</div>
+    </div>
+    <div class="bullet-item">
+      <div class="bullet-emoji">📚</div>
+      <div class="bullet-text"><strong>LlamaIndex:</strong> Document-heavy RAG agents — structured + unstructured data</div>
+    </div>
+    <div class="bullet-item">
+      <div class="bullet-emoji">☁️</div>
+      <div class="bullet-text"><strong>Cloud SDKs:</strong> OpenAI Agents SDK, Google ADK for Vertex AI, Claude Agent SDK with explicit allowlists, Microsoft Agent Framework for Azure</div>
+    </div>
+    <div class="bullet-item" style="grid-column:1 / -1;">
+      <div class="bullet-emoji">💡</div>
+      <div class="bullet-text"><strong>Key finding:</strong> Framework choice is reversible. Your context layer architecture is compounding. 70% of production agents use no fine-tuning — prompts replace training data</div>
+    </div>
+  </div>
+
+  <div class="slide-footer">
+    <span class="source-pill">langchain.com/state-of-ai-agents</span>
+    <span class="source-pill">openai.com/agents-sdk</span>
+    <span class="source-pill">cloud.google.com/vertex-ai</span>
+  </div>
+  <aside class="notes">There is no single best framework. Pick for your team size and complexity. LangGraph dominates stateful production. 17 of 20 production case studies use closed-source frontier models. Prompt engineering is still manual.</aside>
+</section>
+
+<!-- 7. Case Studies -->
+<section>
+  <div class="section-head">
+    <div class="section-kicker">ROI, proven</div>
+    <h2>Real-World Case Studies — Quantified ROI</h2>
+  </div>
+
+  <div class="bullet-grid">
+    <div class="bullet-item">
+      <div class="bullet-emoji">💬</div>
+      <div class="bullet-text"><strong>Klarna — Customer Service:</strong> 2.3M conversations, 35+ languages, resolution 11 min → 2 min, ~$40M profit improvement</div>
+    </div>
+    <div class="bullet-item">
+      <div class="bullet-emoji">🏡</div>
+      <div class="bullet-text"><strong>Rocket Companies — Mortgage:</strong> 1 engineer, 2 days to build tax agent, saved $1M/year</div>
+    </div>
+    <div class="bullet-item">
+      <div class="bullet-emoji">🏨</div>
+      <div class="bullet-text"><strong>Strawberry Hotels — 230+ properties:</strong> Scout AI, 36,000 hours saved/year, 98% positive guest sentiment</div>
+    </div>
+    <div class="bullet-item">
+      <div class="bullet-emoji">🧪</div>
+      <div class="bullet-text"><strong>Moderna / EY at scale:</strong> Moderna built 3,000+ internal agents; EY.ai EYQ unifies AI across 300,000+ professionals</div>
+    </div>
+    <div class="bullet-item" style="grid-column:1 / -1;">
+      <div class="bullet-emoji">🏭</div>
+      <div class="bullet-text"><strong>Industrial B2B:</strong> Audit reporting time cut by 92% — 2–10x gains require radical workflow redesign, not bolting AI on</div>
+    </div>
+  </div>
+
+  <div class="slide-footer">
+    <span class="source-pill">klarna.com</span>
+    <span class="source-pill">cloud.google.com/vertex-ai</span>
+    <span class="source-pill">salesforce.com/agentforce</span>
+  </div>
+  <aside class="notes">ROI is real when you redesign workflows. Klarna handled two-thirds of chats. Strawberry Hotels got 25,000 employee hours back with a sassy personality. EY's lesson: enterprise-scale is a governance challenge as much as a tech one.</aside>
+</section>
+
+<!-- 8. Failure Modes -->
+<section>
+  <div class="section-head">
+    <div class="section-kicker">Reliability</div>
+    <h2>Why Agents Fail in Production — Top 5 Failure Modes</h2>
+  </div>
+
+  <div class="bullet-grid single">
+    <div class="bullet-item">
+      <div class="bullet-emoji">🧨</div>
+      <div class="bullet-text"><strong>Tool Misuse / Hallucinated Calls:</strong> Wrong tool or bad parameters — Fix: strict schemas, allowlists, validation</div>
+    </div>
+    <div class="bullet-item">
+      <div class="bullet-emoji">♾️</div>
+      <div class="bullet-text"><strong>Infinite Loops / Over-Reasoning:</strong> Agents never converge — Fix: iteration limits, step caps, early-exit rules</div>
+    </div>
+    <div class="bullet-item">
+      <div class="bullet-emoji">🔍</div>
+      <div class="bullet-text"><strong>Bad Retrieval Context:</strong> Irrelevant RAG → wrong answers — Fix: relevance scoring, task-specific context</div>
+    </div>
+    <div class="bullet-item">
+      <div class="bullet-emoji">🤫</div>
+      <div class="bullet-text"><strong>Silent Failures:</strong> Tools fail partially, system proceeds anyway — RAG failures are "silent, hidden behind plausible text"</div>
+    </div>
+    <div class="bullet-item">
+      <div class="bullet-emoji">💸</div>
+      <div class="bullet-text"><strong>Cost Spikes / Context Accumulation:</strong> Unbounded history hits 200k token limits — Fix: token budgets, summarization, sliding windows</div>
+    </div>
+  </div>
+
+  <div style="margin-top:14px; font-size:.52em; color:#aab3d7;">Quality is the #1 barrier to scaling, cited by 32%. Also see Microsoft's 10 new AI Red Team failures: memory poisoning, prompt injection, human-loop bypass.</div>
+
+  <div class="slide-footer">
+    <span class="source-pill">Microsoft AI Red Teaming</span>
+    <span class="source-pill">LangChain</span>
+    <span class="source-pill">Salesforce Agentforce</span>
+  </div>
+  <aside class="notes">Quality is the #1 barrier to scaling, cited by 32%. Production systems don't fail randomly. They fail in these 5 known ways. Design for them upfront. Add Microsoft's 10 new AI Red Team failures: memory poisoning, prompt injection, human-loop bypass.</aside>
+</section>
+
+<!-- 9. Best Practices -->
+<section>
+  <div class="section-head">
+    <div class="section-kicker">Playbook</div>
+    <h2>Production Best Practices — Building for Reliability</h2>
+  </div>
+
+  <div class="bullet-grid">
+    <div class="bullet-item">
+      <div class="bullet-emoji">🔐</div>
+      <div class="bullet-text"><strong>Harden tool use:</strong> Strict Pydantic schemas, allow-listed tools only, validate before execution, explicit error handling with fallbacks</div>
+    </div>
+    <div class="bullet-item">
+      <div class="bullet-emoji">🎛️</div>
+      <div class="bullet-text"><strong>Control autonomy:</strong> Iteration limits, token budgets per-workflow, periodic summarization, early-exit rules</div>
+    </div>
+    <div class="bullet-item">
+      <div class="bullet-emoji">🧪</div>
+      <div class="bullet-text"><strong>Test like software:</strong> Version prompts, trace every agent run, run scenario-based evaluations, treat RAG/tools as testable subsystems</div>
+    </div>
+    <div class="bullet-item">
+      <div class="bullet-emoji">👤</div>
+      <div class="bullet-text"><strong>Keep humans in control:</strong> Targeted checkpoints, escalations, manual override, reversible actions, full audit logging</div>
+    </div>
+    <div class="bullet-item" style="grid-column:1 / -1;">
+      <div class="bullet-emoji">🌐</div>
+      <div class="bullet-text"><strong>Use a multi-provider AI gateway</strong> with failover and cost metrics. Ship agents like you ship microservices.</div>
+    </div>
+  </div>
+
+  <div class="slide-footer">
+    <span class="source-pill">LangChain</span>
+    <span class="source-pill">OpenAI Agents SDK</span>
+    <span class="source-pill">Microsoft AI Red Teaming</span>
+  </div>
+  <aside class="notes">Teams routinely trade away intelligence and autonomy to gain predictability and control. That is correct. Make actions reversible. Log everything. Run scenario evals in CI. Your agent must be as observable as any microservice.</aside>
+</section>
+
+<!-- 10. Trends -->
+<section>
+  <div class="section-head">
+    <div class="section-kicker">Looking ahead</div>
+    <h2>Trends for 2026: Protocols, Orchestration, Identity</h2>
+  </div>
+
+  <div class="bullet-grid single">
+    <div class="bullet-item">
+      <div class="bullet-emoji">🔌</div>
+      <div class="bullet-text"><strong>Protocol consolidation — MCP + A2A v1.0 shipped in 2025:</strong> MCP has 97M monthly downloads, 9,400+ servers, donated to Linux Foundation AAIF</div>
+    </div>
+    <div class="bullet-item">
+      <div class="bullet-emoji">🧠</div>
+      <div class="bullet-text"><strong>Multi-agent orchestration is now mainstream:</strong> “The orchestrated workforce model” — Salesforce. Multi-agent is about specialization and failure isolation, not context windows</div>
+    </div>
+    <div class="bullet-item">
+      <div class="bullet-emoji">🪪</div>
+      <div class="bullet-text"><strong>Governance, security, identity-first agents:</strong> Agents write to production DBs and trigger transactions — treated like human employees</div>
+    </div>
+    <div class="bullet-item">
+      <div class="bullet-emoji">🛂</div>
+      <div class="bullet-text"><strong>Agent identity:</strong> Per-agent authentication, RBAC, anomaly detection, audit trails, OIDC — Enterprise Readiness is the 2026 roadmap</div>
+    </div>
+  </div>
+
+  <div class="slide-footer">
+    <span class="source-pill">anthropic.com/mcp</span>
+    <span class="source-pill">salesforce.com/agentforce</span>
+    <span class="source-pill">Microsoft AI Red Teaming</span>
+  </div>
+  <aside class="notes">2026 is the year of the Multi-Agentic Enterprise. MCP and A2A are backed by OpenAI, Anthropic, Google, Microsoft, AWS. Stop building brittle monoliths. Build specialized, independently deployed agents with identity.</aside>
+</section>
+
+<!-- 11. Summary -->
+<section>
+  <div class="section-head">
+    <div class="section-kicker">Recap</div>
+    <h2>Key Takeaways: AI Agents in Production</h2>
+  </div>
+
+  <div class="takeaways">
+    <div class="takeaway">
+      <span class="t-num">01</span>
+      <b>Production ≠ Prototype</b>
+      <p>You need SLAs, observability, cost control, and governance from day one.</p>
+    </div>
+    <div class="takeaway">
+      <span class="t-num">02</span>
+      <b>The Agent is one layer</b>
+      <p>Build the full 7-layer pipeline — RAG, tools, policy, and evaluation.</p>
+    </div>
+    <div class="takeaway">
+      <span class="t-num">03</span>
+      <b>Design for known failures</b>
+      <p>Tool misuse, loops, silent RAG failures, cost spikes — all preventable.</p>
+    </div>
+    <div class="takeaway">
+      <span class="t-num">04</span>
+      <b>Trade intelligence for predictability</b>
+      <p>Strict schemas, iteration caps, and human checkpoints let you sleep at night.</p>
+    </div>
+    <div class="takeaway" style="grid-column: 1 / -1;">
+      <span class="t-num">05</span>
+      <b>Start with workflow redesign</b>
+      <p>2–10x ROI comes from radical redesign, not bolting AI onto existing processes.</p>
+    </div>
+  </div>
+
+  <div class="slide-footer">
+    <span class="source-pill">McKinsey – State of AI</span>
+    <span class="source-pill">LangChain – State of AI Agents</span>
+  </div>
+  <aside class="notes">Ship agents like you ship software. Trace everything, version prompts, control costs, and secure tools. The winners in 2026 will be teams with the best evaluation harnesses and governance, not the smartest prompts.</aside>
+</section>
+
+<!-- 12. References -->
+<section>
+  <div class="section-head">
+    <div class="section-kicker">Further reading</div>
+    <h2>References</h2>
+  </div>
+
+  <div class="ref-grid">
+    <div class="ref-card"><div class="ref-badge">1</div><a href="https://www.mckinsey.com/capabilities/quantumblack/our-insights/the-state-of-ai" target="_blank" rel="noopener">mckinsey.com/capabilities/quantumblack/our-insights/the-state-of-ai</a></div>
+    <div class="ref-card"><div class="ref-badge">2</div><a href="https://www.langchain.com/state-of-ai-agents" target="_blank" rel="noopener">langchain.com/state-of-ai-agents</a></div>
+    <div class="ref-card"><div class="ref-badge">3</div><a href="https://www.anthropic.com/news/model-context-protocol" target="_blank" rel="noopener">anthropic.com/news/model-context-protocol</a></div>
+    <div class="ref-card"><div class="ref-badge">4</div><a href="https://openai.com/index/introducing-the-agents-sdk/" target="_blank" rel="noopener">openai.com/index/introducing-the-agents-sdk</a></div>
+    <div class="ref-card"><div class="ref-badge">5</div><a href="https://cloud.google.com/vertex-ai/generative-ai/docs/agent-builder" target="_blank" rel="noopener">cloud.google.com/vertex-ai/generative-ai/docs/agent-builder</a></div>
+    <div class="ref-card"><div class="ref-badge">6</div><a href="https://www.salesforce.com/agentforce/" target="_blank" rel="noopener">salesforce.com/agentforce</a></div>
+    <div class="ref-card"><div class="ref-badge">7</div><a href="https://www.klarna.com/international/press/klarna-ai-assistant-handles-two-thirds-of-customer-service-chats/" target="_blank" rel="noopener">klarna.com — AI assistant case study</a></div>
+    <div class="ref-card"><div class="ref-badge">8</div><a href="https://learn.microsoft.com/en-us/ai/responsible-ai/ai-red-teaming" target="_blank" rel="noopener">learn.microsoft.com/ai/responsible-ai/ai-red-teaming</a></div>
+  </div>
+
+  <p style="margin-top:22px; font-size:.50em; color:#97a0c3;">Full source list for frameworks, case studies, and security red teaming. Thank you — Q&A</p>
+  <aside class="notes">Full source list for further reading on frameworks, case studies, and security red teaming.</aside>
+</section>
+
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/highlight/highlight.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/notes/notes.js"></script>
+<script>
+  Reveal.initialize({
+    hash: true,
+    slideNumber: 'c/t',
+    progress: true,
+    transition: 'fade',
+    backgroundTransition: 'fade',
+    plugins: [ RevealHighlight, RevealNotes ],
+    width: 1200,
+    height: 720,
+    margin: 0.06
+  });
+</script>
+</body>
+</html>

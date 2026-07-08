@@ -1,0 +1,79 @@
+# XcodeGen spec for VisionClaw.
+#
+#   brew install xcodegen
+#   cd app
+#   cp Secrets.example.xcconfig Secrets.xcconfig   # then fill in values
+#   xcodegen generate
+#   open VisionClaw.xcodeproj
+#
+# Build/generate with Xcode 26.6 or later:
+#   sudo xcode-select -s /Applications/Xcode.app   # or DEVELOPER_DIR=...
+name: VisionClaw
+
+options:
+  bundleIdPrefix: meta.cookbook.visionclaw
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+
+configs:
+  Debug: debug
+  Release: release
+
+# Build settings live in BuildSettings.xcconfig, which optionally #include?s the
+# git-ignored Secrets.xcconfig for real values.
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+
+packages:
+  MetaWearablesDAT:
+    url: https://github.com/facebook/meta-wearables-dat-ios
+    exactVersion: 0.7.0
+
+targets:
+  VisionClaw:
+    type: application
+    platform: iOS
+    configFiles:
+      Debug: BuildSettings.xcconfig
+      Release: BuildSettings.xcconfig
+    sources:
+      - path: Sources/VisionClaw
+      - path: Resources/Assets.xcassets
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: meta.cookbook.visionclaw
+        INFOPLIST_FILE: Resources/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Resources/VisionClaw.entitlements
+        GENERATE_INFOPLIST_FILE: NO
+        TARGETED_DEVICE_FAMILY: "1"
+        ENABLE_USER_SCRIPT_SANDBOXING: YES
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+    dependencies:
+      - package: MetaWearablesDAT
+        product: MWDATCore
+      - package: MetaWearablesDAT
+        product: MWDATCamera
+      - package: MetaWearablesDAT
+        product: MWDATMockDevice
+    scheme:
+      testTargets:
+        - VisionClawTests
+      gatherCoverageData: false
+
+  VisionClawTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: Tests
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: meta.cookbook.visionclaw.tests
+        GENERATE_INFOPLIST_FILE: YES
+    dependencies:
+      - target: VisionClaw
+      - package: MetaWearablesDAT
+        product: MWDATMockDevice

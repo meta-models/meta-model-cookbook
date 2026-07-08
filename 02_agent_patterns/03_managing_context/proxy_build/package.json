@@ -1,0 +1,21 @@
+{
+  "name": "http-reverse-proxy",
+  "version": "1.0.0",
+  "description": "HTTP reverse proxy + load balancer",
+  "main": "dist/server.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "dev": "tsx watch src/server.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "type": "module",
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^20.14.2",
+    "tsx": "^4.15.6",
+    "typescript": "^5.4.5",
+    "vitest": "^1.6.0"
+  }
+}

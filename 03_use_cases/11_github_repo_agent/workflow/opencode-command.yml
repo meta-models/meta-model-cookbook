@@ -1,0 +1,40 @@
+# Phase 2 (write, gated): maintainer-invoked /oc or /opencode commands.
+# The repo-agent orchestrator reads the request and delegates to a specialist.
+name: opencode-command
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+
+jobs:
+  command:
+    # Only run on explicit /oc or /opencode, and only for users who can write to the
+    # repo (maintainers). This gates all write-capable agent work behind a human.
+    if: |
+      (contains(github.event.comment.body, '/oc') ||
+       contains(github.event.comment.body, '/opencode')) &&
+      (github.event.comment.author_association == 'OWNER' ||
+       github.event.comment.author_association == 'MEMBER' ||
+       github.event.comment.author_association == 'COLLABORATOR')
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: write        # bugfix delegation may create branches/commits
+      pull-requests: write
+      issues: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: anomalyco/opencode/github@latest
+        env:
+          MODEL_API_KEY: ${{ secrets.MODEL_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          model: model_api/muse-spark-1.1
+          agent: repo-agent
+          use_github_token: true

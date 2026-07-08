@@ -1,0 +1,75 @@
+{
+  "patterns": [
+    {
+      "text": "Recurrence rate 66.7% (28/42 recurring, 14 one-off), indicating flapping alert fatigue",
+      "salience_hint": 0.92
+    },
+    {
+      "text": "Noisy hours concentration 66.7% (28/42 alerts fire 2-4am), disrupting on-call sleep/focus time",
+      "salience_hint": 0.9
+    },
+    {
+      "text": "Owner concentration 73.8% (31/42 alerts owned by alex@brewbean.example vs priya 6, ops 3), single on-call bottleneck",
+      "salience_hint": 0.85
+    },
+    {
+      "text": "Low silencing ratio 7.1% (3/42 silenced), with alert volume 1.4 alerts/day",
+      "salience_hint": 0.65
+    },
+    {
+      "text": "Top components evenly noisy: checkout (6), payments (6), inventory (6), matching recurring overnight spikes",
+      "salience_hint": 0.78
+    }
+  ],
+  "refined_purpose": {
+    "statement": "Reduce recurring 2-4am checkout/payments/inventory alerts and rebalance owner load away from alex to protect on-call focus time for BrewBean POS.",
+    "rationale": "66.7% recurrence and 66.7% overnight (2-4am) concentration, with 73.8% owner load on alex at 1.4 alerts/day, drives alert fatigue."
+  },
+  "signals": [
+    {
+      "source_connector": "alert_feed",
+      "extraction": "count(alerts) per day",
+      "unit": "alerts/day",
+      "direction": "down",
+      "role": "north-star",
+      "proxy_strength": "strong",
+      "rationale": "Direct measure of on-call noise volume for BrewBean POS"
+    },
+    {
+      "source_connector": "alert_feed",
+      "extraction": "count(recurring=true) / count(alerts) per day",
+      "unit": "ratio",
+      "direction": "down",
+      "role": "leading",
+      "proxy_strength": "strong",
+      "rationale": "66.7% recurrence drives fatigue; reducing flaps cuts noise"
+    },
+    {
+      "source_connector": "alert_feed",
+      "extraction": "count(timestamp hour between 02:00-04:00 UTC) per day",
+      "unit": "alerts/night",
+      "direction": "down",
+      "role": "leading",
+      "proxy_strength": "strong",
+      "rationale": "66.7% of alerts (28/42) fire overnight, disrupting focus time"
+    },
+    {
+      "source_connector": "alert_feed",
+      "extraction": "count(owner='alex@brewbean.example') per day",
+      "unit": "alerts/day",
+      "direction": "down",
+      "role": "leading",
+      "proxy_strength": "weak",
+      "rationale": "alex owns 73.8% (31/42); rebalancing protects single on-call"
+    },
+    {
+      "source_connector": "alert_feed",
+      "extraction": "count(component in ['checkout','payments','inventory']) per day",
+      "unit": "alerts/day",
+      "direction": "down",
+      "role": "leading",
+      "proxy_strength": "strong",
+      "rationale": "Top noisy components each 6 alerts, tied to recurring overnight spikes"
+    }
+  ]
+}

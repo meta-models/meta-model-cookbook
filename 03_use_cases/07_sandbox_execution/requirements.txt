@@ -1,0 +1,10 @@
+# Dependencies for the sandboxed-execution recipe.
+# Everything else the scripts use (argparse, json, subprocess, urllib, ...) is
+# in the Python 3.11+ standard library.
+#
+# swebench provides the harness helpers (build_instance_image, make_test_spec)
+# and pulls in the docker SDK, which sandbox_scaffold.py also imports directly.
+# Pinned to the current major series (verified against PyPI); both support the
+# recipe's Python 3.11+ requirement.
+swebench>=4.0,<5
+docker>=7.0,<8

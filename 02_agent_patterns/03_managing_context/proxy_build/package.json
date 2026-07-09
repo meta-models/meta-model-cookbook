@@ -11,11 +11,10 @@
     "typecheck": "tsc --noEmit"
   },
   "type": "module",
-  "dependencies": {},
   "devDependencies": {
     "@types/node": "^20.14.2",
     "tsx": "^4.15.6",
     "typescript": "^5.4.5",
-    "vitest": "^1.6.0"
+    "vitest": "^4.1.10"
   }
 }

@@ -1,0 +1,57 @@
+[build-system]
+requires = ["setuptools==82.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "meta-model-cookbook-voice-chess"
+version = "1.0.0"
+description = "A Muse Voice Transcribe and deterministic-parser controller for Apple Chess"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+classifiers = [
+    "Operating System :: MacOS",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+    "pyobjc-framework-ApplicationServices==12.2.2",
+    "pyobjc-framework-AVFoundation==12.2.2",
+    "pyobjc-framework-Cocoa==12.2.2",
+    "pyobjc-framework-Quartz==12.2.2",
+    "pyobjc-framework-ScreenCaptureKit==12.2.2",
+    "websockets==17.0.1",
+]
+
+[project.scripts]
+voice-chess = "voice_chess_cua.cli:main"
+
+[project.optional-dependencies]
+test = [
+    "pytest==9.1.1",
+    "pytest-asyncio==1.4.0",
+    "ruff==0.16.4",
+]
+
+[project.urls]
+Repository = "https://github.com/meta-models/meta-model-cookbook"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["voice_chess_cua*"]
+
+[tool.pytest.ini_options]
+addopts = "--strict-markers"
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+extend-exclude = ["build", "dist", "*.egg-info"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "B", "UP"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"

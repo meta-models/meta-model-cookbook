@@ -9,6 +9,7 @@ There are two ways in. `/v1/asr/realtime` is a WebSocket for live audio, and the
 | # | Recipe | What it does |
 |---|--------|--------------|
 | [01](01_voice_api_fundamentals/) | Speech to text | Transcribe a recording or a live microphone over the streaming WebSocket, get speaker-attributed turns with diarization, or post a whole recording in one HTTP request. |
+| [02](02_voice_chess_cua/) | Voice-controlled Apple Chess | Turn exact spoken chess moves into locally validated Apple Chess actions with a passive HUD, calibrated grid, dry-run mode, and fail-closed native input. |
 
 ## Configuration
 

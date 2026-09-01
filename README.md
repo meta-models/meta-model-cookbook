@@ -97,6 +97,45 @@ End-to-end patterns: multimodal perception, orchestration, and full applications
 | 12 | [Computer use](03_use_cases/12_computer_use/) | Drive a Linux desktop from screenshots — the agent finds an app, opens it, and plays it, clicking through a Cua sandbox. |
 | 13 | [macOS computer use](03_use_cases/13_macos_cua/) | Drive a real Mac from screenshots with `metacua`, a native computer-use agent (Swift + Python) that clicks, types, and works out a GUI app on its own. |
 
+### [4. Muse Code](04_muse_code/)
+
+Build agents with sessions you can audit, safety that fails closed, and an agent team you can steer — each recipe ends with a proof point you can replay.
+
+| # | Recipe | What it does |
+|---|--------|--------------|
+| 01 | [Append-only audit log and crash-safe resume](04_muse_code/01_append_only_audit_log/) | Export the append-only session log and walk the exact sequence of actions and approvals as replayable evidence, then kill the harness mid-task and resume where it stopped with no duplicate side effects. |
+| 02 | [Deterministic Replay in CI](04_muse_code/02_deterministic_replay/) | Turn recorded Muse Code events into a focused golden fixture and replay its model-context projection as a merge-blocking check. |
+| 03 | [Staged approvals for compound shell commands](04_muse_code/03_staged_approvals/) | Decompose a compound shell command into stages, auto-clear the safe ones, and hold the dangerous or unparseable ones for review — trust scoped per action and per workspace, failing closed. |
+| 04 | [Contained execution you can prove](04_muse_code/04_contained_execution/) | Run shell commands inside an OS-level sandbox that live-probes its own enforcement and refuses to run when containment is not actually enforcing. |
+| 05 | [The agent can't rewrite its own rules](04_muse_code/05_immutable_guardrails/) | Ask the agent to edit the guardrail file it runs under; the write stops for human review with no standing grant on offer, and a shell write to the same path fails read-only at the sandbox. |
+| 06 | [Subagent fanout across isolated worktrees](04_muse_code/06_subagent_fanout/) | Fan one job out to parallel subagents, each in its own git worktree, steered or stopped from a single command center. |
+| 07 | [Goal tracking with a judge](04_muse_code/07_goal_tracking/) | Declare a goal once; a judge decides whether the work is actually done and refuses to close the turn until every acceptance check passes. |
+| 08 | [Bundled skills: a paved road from idea to shipped](04_muse_code/08_bundled_skills/) | Drive the built-in `/plan`, `/grilling`, `/grill-with-docs`, and `/taste` skills end to end — plan a change, stress-test it, record the decisions, and build UI that does not look AI-made. |
+| 09 | [Loop and cron: scheduled agent work](04_muse_code/09_loop_and_cron/) | Schedule recurring or one-time agent work in natural language, then view, change, or cancel it from the same chat surface. |
+| 10 | [Multi-turn side chats](04_muse_code/10_side_chats/) | Branch a multi-turn side conversation off a busy main thread with `/side` (or its alias `/btw`), isolated from the main transcript. |
+
+### [5. Muse Image](05_muse_image/)
+
+Generate and edit images through the conversational Responses API, driving each task end to end
+in one chained conversation.
+
+| # | Recipe | What it does |
+|---|--------|--------------|
+| 01 | [Generate, edit, and compose images](05_muse_image/01_image_api_fundamentals/) | Drive Muse Image through the Responses API: generate an image from a prompt, refine it over chained turns, and attach reference images to steer or compose several into one scene. |
+| 02 | [Ground image generation in web search](05_muse_image/02_backyard_restyle/) | Let the model search the live web mid-generation, so it renders from furniture actually sold today, then place a coordinated outdoor set into a photo of a real backyard. |
+| 03 | [Consistency across an image series](05_muse_image/03_anchored_generation/) | Anchor a whole series on a small reference set and carry it through the conversation, so the character, style, and setting stay on-model from one image to the next. |
+| 04 | [Editing with image understanding and reasoning](05_muse_image/04_image_editing_with_reasoning/) | Edit a specific part of an image by describing it, letting the model reason over the frame and refine the same image across turns, changing what you ask for while preserving the rest. |
+
+### [6. Muse Voice Transcribe](06_muse_voice/)
+
+Turn speech into text as it is spoken. Muse Voice Transcribe is the one part of the Model API
+that is not an HTTP endpoint — real-time transcription needs a bidirectional connection, so
+these recipes use a WebSocket client rather than the OpenAI SDK.
+
+| # | Recipe | What it does |
+|---|--------|--------------|
+| 01 | [Speech to text](06_muse_voice/01_voice_api_fundamentals/) | Transcribe a recording or a live microphone over the streaming WebSocket, get speaker-attributed turns with diarization, or post a whole recording in one HTTP request. |
+
 ## License
 
 See [LICENSE](LICENSE) for details.

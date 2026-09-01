@@ -43,11 +43,11 @@ class OverlayStyle:
     highlight_line_width: float = 3.0
     source_fill_alpha: float = 0.20
     destination_fill_alpha: float = 0.22
-    label_font_size: float = 8.0
-    label_background_alpha: float = 0.55
+    label_font_size: float = 9.0
+    label_background_alpha: float = 0.82
     label_corner_radius: float = 5.0
-    label_width: float = 20.0
-    label_height: float = 12.0
+    label_width: float = 22.0
+    label_height: float = 14.0
     hud_width: float = 286.0
     hud_height: float = 154.0
     hud_gap: float = 14.0

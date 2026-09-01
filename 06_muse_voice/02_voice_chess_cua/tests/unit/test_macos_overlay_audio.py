@@ -91,10 +91,10 @@ def test_overlay_style_matches_legacy_visual_contract() -> None:
     assert style.highlight_line_width == 3
     assert style.source_fill_alpha == 0.20
     assert style.destination_fill_alpha == 0.22
-    assert style.label_font_size == 8
-    assert style.label_background_alpha == 0.55
+    assert style.label_font_size == 9
+    assert style.label_background_alpha == 0.82
     assert style.label_corner_radius == 5
-    assert (style.label_width, style.label_height) == (20, 12)
+    assert (style.label_width, style.label_height) == (22, 14)
 
 
 def test_waveform_geometry_orders_samples_and_applies_sqrt_scaling() -> None:

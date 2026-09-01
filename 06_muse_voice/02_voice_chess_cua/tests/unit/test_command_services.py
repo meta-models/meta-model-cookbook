@@ -13,7 +13,7 @@ import pytest
 
 from voice_chess_cua.cli import CLICommand, CLIInvocation, CommandName
 from voice_chess_cua.domain.chess import ChessSquare
-from voice_chess_cua.domain.geometry import PixelSize, Point, Rect
+from voice_chess_cua.domain.geometry import BoardGeometry, PixelSize, Point, Quad, Rect
 from voice_chess_cua.macos.application import ChessApplicationStatus
 from voice_chess_cua.macos.capture import WindowScreenshot
 from voice_chess_cua.macos.permissions import PermissionGrant, PermissionSnapshot
@@ -228,41 +228,142 @@ def test_fixed_detector_rejects_layout_without_matching_ax_landmarks() -> None:
         asyncio.run(detector.detect())
 
 
-def test_ax_layout_accepts_uniformly_translated_landmarks() -> None:
-    detection = asyncio.run(make_detector(make_screenshot()).detect())
-    geometry = detection.geometry
-    expected = {
+def _corner_centers(geometry: BoardGeometry) -> dict[str, Point]:
+    return {
         square: geometry.center_of(ChessSquare.parse(square.upper()))
         for square in ("a1", "h1", "a8", "h8")
     }
-    shifted = {
-        square: Point(center.x + 50.0, center.y + 25.0)
-        for square, center in expected.items()
-    }
+
+
+def test_ax_layout_reconstructs_projective_geometry_from_landmarks() -> None:
+    proposal = asyncio.run(make_detector(make_screenshot()).detect()).geometry
+    expected = BoardGeometry(
+        Quad(
+            Point(350.0, 385.0),
+            Point(825.0, 380.0),
+            Point(890.0, 855.0),
+            Point(290.0, 860.0),
+        )
+    )
+    centers = _corner_centers(expected)
 
     corrected = asyncio.run(
         _reconcile_accessibility_geometry(
-            LandmarkProbeFake(shifted),  # type: ignore[arg-type]
+            LandmarkProbeFake(centers),  # type: ignore[arg-type]
             42,
-            geometry,
+            proposal,
+            Rect(100.0, 200.0, 979.0, 768.0),
+        )
+    )
+
+    assert corrected is not None
+    assert corrected != proposal
+    for square, center in centers.items():
+        actual = corrected.center_of(ChessSquare.parse(square.upper()))
+        assert actual.x == pytest.approx(center.x)
+        assert actual.y == pytest.approx(center.y)
+    for actual, wanted in zip(corrected.quad.points, expected.quad.points, strict=True):
+        assert actual.x == pytest.approx(wanted.x)
+        assert actual.y == pytest.approx(wanted.y)
+
+
+def test_ax_layout_corrects_uniform_translation_and_scale() -> None:
+    proposal = asyncio.run(make_detector(make_screenshot()).detect()).geometry
+    center = proposal.quad.center
+    expected = BoardGeometry(
+        Quad(
+            *(
+                Point(
+                    center.x + (point.x - center.x) * 1.04 + 8.0,
+                    center.y + (point.y - center.y) * 1.04 + 6.0,
+                )
+                for point in proposal.quad.points
+            )
+        )
+    )
+    centers = _corner_centers(expected)
+
+    corrected = asyncio.run(
+        _reconcile_accessibility_geometry(
+            LandmarkProbeFake(centers),  # type: ignore[arg-type]
+            42,
+            proposal,
             _CALIBRATED_WINDOW_FRAME,
         )
     )
 
-    assert corrected == geometry
+    assert corrected is not None
+    assert corrected.quad.maximum_corner_distance_to(expected.quad) == pytest.approx(
+        0.0, abs=1e-9
+    )
+
+
+def test_ax_layout_rejects_incomplete_landmarks() -> None:
+    geometry = asyncio.run(make_detector(make_screenshot()).detect()).geometry
+    centers = _corner_centers(geometry)
+    del centers["h1"]
+
+    assert (
+        asyncio.run(
+            _reconcile_accessibility_geometry(
+                LandmarkProbeFake(centers),  # type: ignore[arg-type]
+                42,
+                geometry,
+                _CALIBRATED_WINDOW_FRAME,
+            )
+        )
+        is None
+    )
+
+
+def test_ax_layout_rejects_singular_landmarks() -> None:
+    geometry = asyncio.run(make_detector(make_screenshot()).detect()).geometry
+    centers = {
+        "a8": Point(300.0, 300.0),
+        "h8": Point(400.0, 300.0),
+        "h1": Point(500.0, 300.0),
+        "a1": Point(600.0, 300.0),
+    }
+
+    assert (
+        asyncio.run(
+            _reconcile_accessibility_geometry(
+                LandmarkProbeFake(centers),  # type: ignore[arg-type]
+                42,
+                geometry,
+                _CALIBRATED_WINDOW_FRAME,
+            )
+        )
+        is None
+    )
+
+
+def test_ax_layout_rejects_geometry_outside_chess_window() -> None:
+    proposal = asyncio.run(make_detector(make_screenshot()).detect()).geometry
+    outside = BoardGeometry(
+        Quad(*(Point(point.x - 300.0, point.y) for point in proposal.quad.points))
+    )
+
+    assert (
+        asyncio.run(
+            _reconcile_accessibility_geometry(
+                LandmarkProbeFake(_corner_centers(outside)),  # type: ignore[arg-type]
+                42,
+                proposal,
+                _CALIBRATED_WINDOW_FRAME,
+            )
+        )
+        is None
+    )
 
 
 @pytest.mark.parametrize(
     "changed_square",
     ("a1", "h1", "a8", "h8"),
 )
-def test_ax_layout_rejects_nonuniform_landmark_offsets(changed_square: str) -> None:
-    detection = asyncio.run(make_detector(make_screenshot()).detect())
-    geometry = detection.geometry
-    centers = {
-        square: geometry.center_of(ChessSquare.parse(square.upper()))
-        for square in ("a1", "h1", "a8", "h8")
-    }
+def test_ax_layout_rejects_dimension_mismatch(changed_square: str) -> None:
+    geometry = asyncio.run(make_detector(make_screenshot()).detect()).geometry
+    centers = _corner_centers(geometry)
     center = centers[changed_square]
     centers[changed_square] = Point(center.x + 100.0, center.y)
 

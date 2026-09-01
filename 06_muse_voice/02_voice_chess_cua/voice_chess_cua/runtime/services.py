@@ -12,7 +12,7 @@ import asyncio
 import os
 from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass
-from math import hypot
+from math import hypot, isfinite
 from statistics import median
 from typing import Protocol, cast
 
@@ -233,20 +233,131 @@ async def _reconcile_accessibility_geometry(
     window_frame: Rect,
 ) -> BoardGeometry | None:
     centers = await probe.square_centers(process_identifier)
+    landmark_names = ("a1", "h1", "a8", "h8")
+    if set(centers) != set(landmark_names):
+        return None
     expected = {
         square: geometry.center_of(ChessSquare.parse(square.upper()))
-        for square in ("a1", "h1", "a8", "h8")
+        for square in landmark_names
     }
     expected_distances = _landmark_distances(expected)
     actual_distances = _landmark_distances(centers)
-    if expected_distances.keys() != actual_distances.keys():
-        return None
-    del window_frame
-    dimensions_match = all(
+    if expected_distances.keys() != actual_distances.keys() or not all(
         abs(actual_distances[pair] - expected_distance) / expected_distance <= 0.08
         for pair, expected_distance in expected_distances.items()
+    ):
+        return None
+    try:
+        corrected = _geometry_from_accessibility_centers(centers, geometry.orientation)
+    except ValueError:
+        return None
+    board_span = max(corrected.quad.width, corrected.quad.height)
+    maximum_residual = max(1.0, board_span * 0.005)
+    if any(
+        corrected.center_of(ChessSquare.parse(square.upper())).distance_to(center)
+        > maximum_residual
+        for square, center in centers.items()
+    ):
+        return None
+    rounding_tolerance = max(1.0, board_span * 0.005)
+    if any(
+        not (
+            window_frame.min_x - rounding_tolerance
+            <= point.x
+            <= window_frame.max_x + rounding_tolerance
+            and window_frame.min_y - rounding_tolerance
+            <= point.y
+            <= window_frame.max_y + rounding_tolerance
+        )
+        for point in corrected.quad.points
+    ):
+        return None
+    return corrected
+
+
+def _geometry_from_accessibility_centers(
+    centers: Mapping[str, Point],
+    orientation: BoardOrientation,
+) -> BoardGeometry:
+    unit_centers = {
+        "a8": Point(1.0 / 16.0, 1.0 / 16.0),
+        "h8": Point(15.0 / 16.0, 1.0 / 16.0),
+        "h1": Point(15.0 / 16.0, 15.0 / 16.0),
+        "a1": Point(1.0 / 16.0, 15.0 / 16.0),
+    }
+    if set(centers) != set(unit_centers):
+        raise ValueError("Accessibility board landmarks are incomplete")
+    coefficients = _solve_homography(
+        tuple((unit_centers[square], centers[square]) for square in unit_centers)
     )
-    return geometry if dimensions_match else None
+
+    def mapped(point: Point) -> Point:
+        a, b, c, d, e, f, g, h = coefficients
+        denominator = g * point.x + h * point.y + 1.0
+        if not isfinite(denominator) or abs(denominator) <= 1e-12:
+            raise ValueError("Accessibility board homography maps to infinity")
+        result = Point(
+            (a * point.x + b * point.y + c) / denominator,
+            (d * point.x + e * point.y + f) / denominator,
+        )
+        if not result.is_finite:
+            raise ValueError("Accessibility board homography is not finite")
+        return result
+
+    return BoardGeometry(
+        Quad(
+            mapped(Point(0.0, 0.0)),
+            mapped(Point(1.0, 0.0)),
+            mapped(Point(1.0, 1.0)),
+            mapped(Point(0.0, 1.0)),
+        ),
+        orientation,
+    )
+
+
+def _solve_homography(
+    correspondences: tuple[tuple[Point, Point], ...],
+) -> tuple[float, float, float, float, float, float, float, float]:
+    if len(correspondences) != 4:
+        raise ValueError("A homography requires four point correspondences")
+    matrix: list[list[float]] = []
+    for source, destination in correspondences:
+        x, y = source.x, source.y
+        target_x, target_y = destination.x, destination.y
+        matrix.append(
+            [x, y, 1.0, 0.0, 0.0, 0.0, -target_x * x, -target_x * y, target_x]
+        )
+        matrix.append(
+            [0.0, 0.0, 0.0, x, y, 1.0, -target_y * x, -target_y * y, target_y]
+        )
+    size = 8
+    for column in range(size):
+        pivot = max(range(column, size), key=lambda row: abs(matrix[row][column]))
+        pivot_value = matrix[pivot][column]
+        if not isfinite(pivot_value) or abs(pivot_value) <= 1e-12:
+            raise ValueError("Accessibility board homography is singular")
+        matrix[column], matrix[pivot] = matrix[pivot], matrix[column]
+        divisor = matrix[column][column]
+        matrix[column] = [value / divisor for value in matrix[column]]
+        for row in range(size):
+            if row == column:
+                continue
+            factor = matrix[row][column]
+            if factor == 0.0:
+                continue
+            matrix[row] = [
+                value - factor * normalized_value
+                for value, normalized_value in zip(
+                    matrix[row], matrix[column], strict=True
+                )
+            ]
+    solution = tuple(matrix[row][-1] for row in range(size))
+    if len(solution) != size or not all(isfinite(value) for value in solution):
+        raise ValueError("Accessibility board homography is not finite")
+    return cast(
+        tuple[float, float, float, float, float, float, float, float],
+        solution,
+    )
 
 
 def _screen_capture_reason(error: ScreenCaptureKitError) -> TrackingFailureReason:

@@ -11,7 +11,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import ClassVar
 
-from voice_chess_cua.domain.geometry import PixelSize, Point, Quad
+from voice_chess_cua.domain.geometry import PixelSize, Point, Quad, Rect
 
 
 class CalibrationError(ValueError):
@@ -47,8 +47,10 @@ class AppleChessBoardCalibration:
     def reference_aspect_ratio(self) -> float:
         return self.reference_image_size.width / self.reference_image_size.height
 
-    def image_quad(self, image_size: PixelSize) -> Quad:
-        aspect_ratio = image_size.width / image_size.height
+    def window_quad(self, window_frame: Rect) -> Quad:
+        """Place the calibrated board quad inside a live Chess window frame."""
+
+        aspect_ratio = window_frame.width / window_frame.height
         relative_error = (
             abs(aspect_ratio - self.reference_aspect_ratio)
             / self.reference_aspect_ratio
@@ -59,26 +61,25 @@ class AppleChessBoardCalibration:
                 self.reference_aspect_ratio,
                 self.maximum_aspect_ratio_error,
             )
-        width = float(image_size.width)
-        height = float(image_size.height)
         try:
             quad = Quad(
-                self._scale(self.normalized_quad.top_left, width, height),
-                self._scale(self.normalized_quad.top_right, width, height),
-                self._scale(self.normalized_quad.bottom_right, width, height),
-                self._scale(self.normalized_quad.bottom_left, width, height),
+                *(
+                    self._place(point, window_frame)
+                    for point in self.normalized_quad.points
+                )
             )
         except ValueError as error:
             raise InvalidCalibrationQuadError() from error
-        if not all(
-            0 <= point.x <= width and 0 <= point.y <= height for point in quad.points
-        ):
+        if not all(window_frame.contains(point) for point in quad.points):
             raise InvalidCalibrationQuadError()
         return quad
 
     @staticmethod
-    def _scale(point: Point, width: float, height: float) -> Point:
-        return Point(point.x * width, point.y * height)
+    def _place(point: Point, window_frame: Rect) -> Point:
+        return Point(
+            window_frame.x + point.x * window_frame.width,
+            window_frame.y + point.y * window_frame.height,
+        )
 
 
 AppleChessBoardCalibration.current = AppleChessBoardCalibration(

@@ -13,7 +13,8 @@ from enum import Enum, StrEnum
 from typing import Any, Protocol, TypeVar
 
 from voice_chess_cua.automation.move_executor import PreparedMove
-from voice_chess_cua.domain.chess import VoiceAction, VoiceCommand
+from voice_chess_cua.command import parse_exact_move
+from voice_chess_cua.domain.chess import ChessMove
 from voice_chess_cua.domain.game_state import MoveKind
 from voice_chess_cua.events import (
     DiscardingRuntimeEventSink,
@@ -33,11 +34,6 @@ from voice_chess_cua.hud import (
     reduce_hud,
 )
 from voice_chess_cua.macos.chess_state import ChessStateObservation
-from voice_chess_cua.planning.schema import PlannerDecisionKind
-from voice_chess_cua.planning.supervised_command import (
-    SupervisedCommandText,
-    _mint_supervised_command_text,
-)
 from voice_chess_cua.voice.asr_diagnostics import (
     ASRTransportError,
     safe_transport_diagnostics,
@@ -55,11 +51,9 @@ from .ports import (
     OverlayPort,
     PartialTranscript,
     PermissionPort,
-    PlannerPort,
     PreparedMoveExecutorPort,
     RuntimeCredentials,
     SettingsPort,
-    SnapshotProbePort,
     SpeechEnded,
     SpeechStarted,
     SupervisedFinalTranscript,
@@ -130,9 +124,7 @@ class RuntimeDependencies:
     overlay: OverlayPort
     asr: ASRPort
     audio: AudioPort
-    planner: PlannerPort
     application_host: ApplicationHostPort
-    snapshot_probe: SnapshotProbePort
     move_executor: PreparedMoveExecutorPort
     notices: RuntimeEventSink = field(default_factory=DiscardingRuntimeEventSink)
     game_state: GameStateObserverPort | None = None
@@ -144,10 +136,6 @@ class RuntimeStartupError(RuntimeError):
             f"runtime startup failed during {failure.stage.value}: {failure.error}"
         )
         self.failure = failure
-
-
-class RuntimeCompositionError(RuntimeError):
-    """Raised until the application supplies the live adapter factory."""
 
 
 class BoardReadinessTimedOutError(RuntimeError):
@@ -168,14 +156,11 @@ class VoiceCUARuntime:
         self,
         dependencies: RuntimeDependencies,
         *,
-        planning_timeout: float = 65.0,
         graceful_asr_close_timeout: float = 6.0,
         graceful_audio_drain_timeout: float = 2.0,
         board_readiness_timeout: float | None = None,
         dry_run: bool = False,
     ) -> None:
-        if planning_timeout <= 0:
-            raise ValueError("planning_timeout must be positive")
         if graceful_asr_close_timeout < 0:
             raise ValueError("graceful_asr_close_timeout must not be negative")
         if graceful_audio_drain_timeout < 0:
@@ -183,7 +168,6 @@ class VoiceCUARuntime:
         if board_readiness_timeout is not None and board_readiness_timeout <= 0:
             raise ValueError("board_readiness_timeout must be positive when enabled")
         self._deps = dependencies
-        self._planning_timeout = planning_timeout
         self._graceful_asr_close_timeout = graceful_asr_close_timeout
         self._graceful_audio_drain_timeout = graceful_audio_drain_timeout
         self._board_readiness_timeout = board_readiness_timeout
@@ -213,7 +197,6 @@ class VoiceCUARuntime:
         self._workers: dict[str, asyncio.Task[None]] = {}
         self._command_tasks: set[asyncio.Task[None]] = set()
         self._planning_task: asyncio.Task[None] | None = None
-        self._execution_task: asyncio.Task[object] | None = None
         self._execution_committed = False
         self._busy_audio_observed = False
         self._busy_rearm_silence_frames = 0
@@ -639,14 +622,13 @@ class VoiceCUARuntime:
             self._emit(stage="command-admission", event="empty_final_ignored")
             await self._update_hud(self._idle_hud_update())
             return
-        supervised_command = _mint_supervised_command_text(
-            runtime_generation=runtime_generation,
-            asr_generation=event.generation,
-            turn_id=event.turn_id,
-            command_text=event.transcript,
-        )
+        move = parse_exact_move(event.transcript)
+        if move is None:
+            self._emit(stage="planner", event="no_move")
+            await self._update_hud(self._idle_hud_update())
+            return
         self._emit(stage="command-admission", event="command_admitted")
-        self._start_command_task(supervised_command, runtime_generation)
+        self._start_command_task(move, runtime_generation, event.generation)
 
     async def _handle_voice_lifecycle(self, event: VoiceLifecycleEvent) -> None:
         fields = {"generation": float(event.generation)}
@@ -698,8 +680,9 @@ class VoiceCUARuntime:
 
     async def _plan_and_dispatch(
         self,
-        supervised_command: SupervisedCommandText,
+        move: ChessMove,
         generation: int,
+        asr_generation: int,
         planning_generation: int,
     ) -> None:
         credentials = self._credentials
@@ -707,16 +690,17 @@ class VoiceCUARuntime:
             return
         try:
             await self._plan_and_execute_move(
-                supervised_command,
+                move,
                 generation,
+                asr_generation,
                 planning_generation,
             )
         except asyncio.CancelledError:
             raise
-        except Exception as error:  # noqa: BLE001 - planner/adapter failures are contained.
+        except Exception as error:  # noqa: BLE001 - CUA adapter failures are contained.
             self._emit(
-                stage="planner",
-                event="parse_failed",
+                stage="cua",
+                event="command_failed",
                 severity="error",
                 fields={"category": type(error).__name__},
             )
@@ -724,64 +708,27 @@ class VoiceCUARuntime:
 
     async def _plan_and_execute_move(
         self,
-        supervised_command: SupervisedCommandText,
+        move: ChessMove,
         generation: int,
+        asr_generation: int,
         planning_generation: int,
     ) -> None:
-        if supervised_command.runtime_generation != generation:
-            raise asyncio.CancelledError
-        asr_generation = supervised_command.asr_generation
-        baseline = await self._snapshot()
         self._ensure_current_planning(generation, planning_generation, asr_generation)
         await self._update_hud(HUDUpdate(phase=HUDPhase.PLANNING))
-        self._emit(stage="planner", event="request_started")
-        decision = await asyncio.wait_for(
-            self._deps.planner.plan(supervised_command),
-            timeout=self._planning_timeout,
-        )
-        self._ensure_current_planning(generation, planning_generation, asr_generation)
-        post_planning = await self._snapshot()
-        self._ensure_current_planning(generation, planning_generation, asr_generation)
-        if baseline != post_planning:
-            self._emit(
-                stage="cua", event="board_changed_before_prepare", severity="warning"
-            )
-            await self._update_hud(HUDUpdate.failed("Board changed"))
-            return
-        if getattr(decision, "kind", None) is not PlannerDecisionKind.COMMAND:
-            self._emit(stage="planner", event="no_move")
-            await self._update_hud(self._idle_hud_update())
-            return
-        command = getattr(decision, "command", None)
-        if (
-            not isinstance(command, VoiceCommand)
-            or command.action is not VoiceAction.MOVE
-            or command.chess_move is None
-        ):
-            self._emit(stage="planner", event="non_move_rejected", severity="warning")
-            await self._update_hud(self._idle_hud_update())
-            return
         move_executor = self._deps.move_executor
-        prepared = await move_executor.prepare(command.chess_move)
+        prepared = await move_executor.prepare(move)
         self._ensure_current_planning(generation, planning_generation, asr_generation)
-        if not isinstance(
-            prepared, PreparedMove
-        ) or not self._prepared_matches_snapshot(
-            prepared,
-            baseline,
-        ):
-            self._emit(
-                stage="cua", event="prepared_baseline_changed", severity="warning"
-            )
-            await self._update_hud(HUDUpdate.failed("Board changed"))
+        if not isinstance(prepared, PreparedMove):
+            self._emit(stage="cua", event="prepare_failed", severity="error")
+            await self._update_hud(HUDUpdate.failed("Move failed"))
             return
         self._emit(
             stage="planner",
             event="command_ready",
             fields={
                 "action": "move",
-                "source": command.chess_move.source.notation,
-                "destination": command.chess_move.destination.notation,
+                "source": move.source.notation,
+                "destination": move.destination.notation,
                 "dry_run": self._dry_run,
             },
         )
@@ -790,8 +737,8 @@ class VoiceCUARuntime:
                 stage="cua",
                 event="dry_run_validated",
                 fields={
-                    "source": command.chess_move.source.notation,
-                    "destination": command.chess_move.destination.notation,
+                    "source": move.source.notation,
+                    "destination": move.destination.notation,
                 },
             )
             await self._update_hud(self._idle_hud_update())
@@ -803,7 +750,6 @@ class VoiceCUARuntime:
             move_executor.execute_prepared(prepared),
             name=f"voice-cua-execution-{generation}-{planning_generation}",
         )
-        self._execution_task = execution
         try:
             await asyncio.shield(execution)
         except asyncio.CancelledError:
@@ -814,47 +760,17 @@ class VoiceCUARuntime:
                     continue
             execution.result()
             raise
-        finally:
-            if self._execution_task is execution:
-                self._execution_task = None
         if self._deps.game_state is not None:
-            self._deps.game_state.confirm_local_move(command.chess_move)
+            self._deps.game_state.confirm_local_move(move)
         self._emit(
             stage="cua",
             event="move_confirmed",
             fields={
-                "source": command.chess_move.source.notation,
-                "destination": command.chess_move.destination.notation,
+                "source": move.source.notation,
+                "destination": move.destination.notation,
             },
         )
         await self._update_hud(HUDUpdate(phase=HUDPhase.WAITING_FOR_CHESS))
-
-    async def _snapshot(self) -> tuple[str, tuple[tuple[str, str], ...]]:
-        snapshot_probe = self._deps.snapshot_probe
-        process_identifier = self._process_identifier
-        if process_identifier is None:
-            raise RuntimeError(
-                "automatic move execution requires a Chess snapshot probe"
-            )
-        title, squares = await snapshot_probe.game_snapshot(process_identifier)
-        return title, tuple(
-            sorted(
-                (str(square).lower(), str(value)) for square, value in squares.items()
-            )
-        )
-
-    @staticmethod
-    def _prepared_matches_snapshot(
-        prepared: PreparedMove,
-        snapshot: tuple[str, tuple[tuple[str, str], ...]],
-    ) -> bool:
-        prepared_snapshot = tuple(
-            sorted(
-                (square.notation.lower(), description)
-                for square, description in prepared.square_snapshot
-            )
-        )
-        return (prepared.ax_title, prepared_snapshot) == snapshot
 
     def _ensure_current_planning(
         self,
@@ -943,7 +859,7 @@ class VoiceCUARuntime:
         )
 
     def _start_command_task(
-        self, supervised_command: SupervisedCommandText, generation: int
+        self, move: ChessMove, generation: int, asr_generation: int
     ) -> None:
         if self._transaction_busy:
             self._emit(stage="command-admission", event="ignored_while_busy")
@@ -955,7 +871,7 @@ class VoiceCUARuntime:
         self._deps.audio.set_transaction_busy(True)
         task = asyncio.create_task(
             self._plan_and_dispatch(
-                supervised_command, generation, planning_generation
+                move, generation, asr_generation, planning_generation
             ),
             name=f"voice-cua-command-{generation}-{planning_generation}",
         )
@@ -1001,7 +917,6 @@ class VoiceCUARuntime:
         else:
             await self._cancel_and_await(self._command_tasks)
         self._planning_task = None
-        self._execution_task = None
 
         await self._best_effort(self._deps.audio.stop)
         audio_worker = self._workers.pop("audio", None)

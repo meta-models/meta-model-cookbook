@@ -12,8 +12,7 @@ import threading
 import time
 from typing import Any
 
-from ._main_thread import run_on_main
-from ._native import load_framework
+from .native import load_framework, run_on_main
 
 
 class AppKitHost:
@@ -28,7 +27,7 @@ class AppKitHost:
     @property
     def application(self) -> object:
         if self._application is None:
-            from ._native import load_framework
+            from .native import load_framework
 
             appkit = load_framework("AppKit")
             self._foundation = load_framework("Foundation")

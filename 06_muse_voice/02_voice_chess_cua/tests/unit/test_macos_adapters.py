@@ -13,25 +13,20 @@ from unittest.mock import Mock
 
 import pytest
 
+import voice_chess_cua.macos.appkit_host as appkit_host
+import voice_chess_cua.macos.application as application
+import voice_chess_cua.macos.permissions as permissions
 from voice_chess_cua.domain.geometry import Point, Rect
-from voice_chess_cua.macos import appkit_host, application, permissions
-from voice_chess_cua.macos._asyncio import call_soon_threadsafe_if_open
 from voice_chess_cua.macos.appkit_host import AppKitHost
 from voice_chess_cua.macos.application import (
     CHESS_BUNDLE_IDENTIFIER,
     ChessActivationTimedOutError,
     ChessApplicationAmbiguousError,
     ChessApplicationController,
+    ChessApplicationReplacedError,
     ChessApplicationStatus,
     ChessApplicationUnavailableError,
     _PyObjCApplicationBackend,
-)
-from voice_chess_cua.macos.capture import (
-    WindowCaptureTimedOutError,
-    WindowScreenshotProvider,
-    WindowUnavailableError,
-    _native_window_matches_candidate,
-    _ScreenCaptureKitCaptureBackend,
 )
 from voice_chess_cua.macos.chess_accessibility import (
     _ApplicationServicesChessAccessibilityBackend,
@@ -43,6 +38,11 @@ from voice_chess_cua.macos.mouse import (
     EventSourceUnavailableError,
     EventTargetChangedError,
     _QuartzEventBackend,
+)
+from voice_chess_cua.macos.native import (
+    call_soon_threadsafe_if_open,
+    load_framework,
+    run_on_main,
 )
 from voice_chess_cua.macos.permissions import (
     MissingPermissionsError,
@@ -60,6 +60,12 @@ from voice_chess_cua.macos.windows import (
     _native_error_code,
     _ScreenCaptureKitWindowBackend,
 )
+
+
+def test_native_helpers_import_from_public_native_module() -> None:
+    assert callable(call_soon_threadsafe_if_open)
+    assert callable(load_framework)
+    assert callable(run_on_main)
 
 
 class NativeRunningApplication:
@@ -250,7 +256,6 @@ class ApplicationBackend:
         self.activations.append(bundle_identifier)
 
 
-@pytest.mark.asyncio
 async def test_application_activates_only_exact_chess_and_waits_for_frontmost(
     monkeypatch,
 ) -> None:
@@ -271,9 +276,33 @@ async def test_application_activates_only_exact_chess_and_waits_for_frontmost(
 
     assert backend.activations == ["com.apple.Chess"]
     assert status == ChessApplicationStatus(True, True, 42)
+    assert controller.bound_process_identifier == 42
 
 
-@pytest.mark.asyncio
+async def test_application_controller_rejects_replaced_chess_process(
+    monkeypatch,
+) -> None:
+    backend = ApplicationBackend(
+        [
+            ChessApplicationStatus(True, True, 42),
+            ChessApplicationStatus(True, True, 43),
+        ]
+    )
+
+    async def immediate(work):
+        return work()
+
+    monkeypatch.setattr(application, "run_on_main", immediate)
+    controller = ChessApplicationController(backend, sleep=lambda _: asyncio.sleep(0))
+
+    first = await controller.activate()
+    assert first.process_identifier == 42
+    assert controller.bound_process_identifier == 42
+    with pytest.raises(ChessApplicationReplacedError):
+        await controller.activate()
+    assert controller.bound_process_identifier == 42
+
+
 async def test_application_activation_times_out_fail_closed(monkeypatch) -> None:
     backend = ApplicationBackend([ChessApplicationStatus(True, False, 42)])
 
@@ -344,14 +373,11 @@ def candidate(
         title="Game",
         application_name="Chess",
         process_id=process_id,
-        is_frontmost=True,
-        display_ids=(1,),
         bundle_identifier=bundle,
         is_on_screen=on_screen,
     )
 
 
-@pytest.mark.asyncio
 async def test_native_window_discovery_times_out_when_callback_never_fires() -> None:
     backend = object.__new__(_ScreenCaptureKitWindowBackend)
     backend._screen_capture_kit = NeverCompletingScreenCaptureKit()
@@ -393,7 +419,6 @@ def test_native_callback_dispatch_drops_loop_close_race() -> None:
     assert not call_soon_threadsafe_if_open(ClosingLoopRace(), lambda: None)  # type: ignore[arg-type]
 
 
-@pytest.mark.asyncio
 async def test_native_window_discovery_preserves_only_numeric_error_code() -> None:
     class FailingShareableContent:
         @staticmethod
@@ -422,7 +447,6 @@ async def test_native_window_discovery_preserves_only_numeric_error_code() -> No
     assert _native_error_code(callable_code) == -3801
 
 
-@pytest.mark.asyncio
 async def test_window_locator_filters_exact_bundle_pid_and_visibility() -> None:
     backend = WindowBackend(
         (
@@ -438,10 +462,8 @@ async def test_window_locator_filters_exact_bundle_pid_and_visibility() -> None:
     assert selected.window_id == 4
     assert selected.process_id == 42
     assert selected.bundle_identifier == "com.apple.Chess"
-    assert selected.display_ids == (1,)
 
 
-@pytest.mark.asyncio
 async def test_window_locator_rejects_zero_or_multiple_eligible_windows() -> None:
     with pytest.raises(NoVisibleChessWindowError):
         await ChessWindowLocator(WindowBackend(())).locate()
@@ -452,7 +474,6 @@ async def test_window_locator_rejects_zero_or_multiple_eligible_windows() -> Non
     assert raised.value.window_ids == (7, 8)
 
 
-@pytest.mark.asyncio
 @pytest.mark.parametrize("process_identifier", (0, -1, True))
 async def test_window_locator_rejects_invalid_expected_process_identifier(
     process_identifier: int,
@@ -463,7 +484,6 @@ async def test_window_locator_rejects_invalid_expected_process_identifier(
         await ChessWindowLocator(backend).locate(expected_process_id=process_identifier)
 
 
-@pytest.mark.asyncio
 @pytest.mark.parametrize("process_identifier", (0, -1, True))
 async def test_window_locator_ignores_candidates_with_invalid_process_identifier(
     process_identifier: int,
@@ -472,235 +492,6 @@ async def test_window_locator_ignores_candidates_with_invalid_process_identifier
         await ChessWindowLocator(
             WindowBackend((candidate(7, process_id=process_identifier),))
         ).locate()
-
-
-class NativeFilter:
-    def pointPixelScale(self) -> float:
-        return 1.0
-
-
-class NativeFilterFactory:
-    @staticmethod
-    def alloc() -> NativeFilterFactory:
-        return NativeFilterFactory()
-
-    def initWithDesktopIndependentWindow_(self, window: object) -> NativeFilter:
-        del window
-        return NativeFilter()
-
-
-class NativeConfiguration:
-    def setWidth_(self, width: int) -> None:
-        del width
-
-    def setHeight_(self, height: int) -> None:
-        del height
-
-    def setShowsCursor_(self, shows_cursor: bool) -> None:
-        del shows_cursor
-
-    def setCapturesAudio_(self, captures_audio: bool) -> None:
-        del captures_audio
-
-
-class NativeConfigurationFactory:
-    @staticmethod
-    def alloc() -> NativeConfigurationFactory:
-        return NativeConfigurationFactory()
-
-    def init(self) -> NativeConfiguration:
-        return NativeConfiguration()
-
-
-class NeverCompletingScreenshotManager:
-    @staticmethod
-    def captureImageWithFilter_configuration_completionHandler_(
-        filter_: object,
-        configuration: object,
-        completed: object,
-    ) -> None:
-        assert filter_ is not None
-        assert configuration is not None
-        assert callable(completed)
-
-
-class NeverCompletingCaptureKit:
-    SCContentFilter = NativeFilterFactory
-    SCStreamConfiguration = NativeConfigurationFactory
-    SCScreenshotManager = NeverCompletingScreenshotManager
-
-
-class RetainedScreenshotManager:
-    completed: object | None = None
-
-    @classmethod
-    def captureImageWithFilter_configuration_completionHandler_(
-        cls,
-        filter_: object,
-        configuration: object,
-        completed: object,
-    ) -> None:
-        assert filter_ is not None
-        assert configuration is not None
-        assert callable(completed)
-        cls.completed = completed
-
-
-class RetainedCaptureKit:
-    SCContentFilter = NativeFilterFactory
-    SCStreamConfiguration = NativeConfigurationFactory
-    SCScreenshotManager = RetainedScreenshotManager
-
-
-class NativeWindowForCapture:
-    def windowID(self) -> int:
-        return 9
-
-    def isOnScreen(self) -> bool:
-        return True
-
-    def owningApplication(self) -> object:
-        return SimpleNamespace(
-            bundleIdentifier=lambda: CHESS_BUNDLE_IDENTIFIER,
-            processID=lambda: 42,
-        )
-
-
-class ShareableContentForCapture:
-    def windows(self) -> tuple[NativeWindowForCapture, ...]:
-        return (NativeWindowForCapture(),)
-
-
-class CaptureBackend:
-    def __init__(self, image: object) -> None:
-        self.image = image
-        self.captured: list[int] = []
-
-    async def capture(self, selected: WindowCandidate) -> object:
-        self.captured.append(selected.window_id)
-        return self.image
-
-
-@pytest.mark.asyncio
-async def test_native_capture_times_out_when_callback_never_fires(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    backend = object.__new__(_ScreenCaptureKitCaptureBackend)
-    backend._screen_capture_kit = NeverCompletingCaptureKit()
-    backend._capture_timeout = 0.001
-
-    async def shareable_content(self: object) -> ShareableContentForCapture:
-        del self
-        return ShareableContentForCapture()
-
-    monkeypatch.setattr(
-        _ScreenCaptureKitWindowBackend,
-        "_shareable_content",
-        shareable_content,
-    )
-
-    with pytest.raises(WindowCaptureTimedOutError, match="timed out"):
-        await backend.capture(candidate(9))
-
-
-def test_native_capture_drops_callback_after_loop_closes(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    RetainedScreenshotManager.completed = None
-    backend = object.__new__(_ScreenCaptureKitCaptureBackend)
-    backend._screen_capture_kit = RetainedCaptureKit()
-    backend._capture_timeout = 0.001
-
-    async def shareable_content(self: object) -> ShareableContentForCapture:
-        del self
-        return ShareableContentForCapture()
-
-    monkeypatch.setattr(
-        _ScreenCaptureKitWindowBackend,
-        "_shareable_content",
-        shareable_content,
-    )
-    loop = asyncio.new_event_loop()
-    try:
-        with pytest.raises(WindowCaptureTimedOutError, match="timed out"):
-            loop.run_until_complete(backend.capture(candidate(9)))
-        completed = RetainedScreenshotManager.completed
-        assert callable(completed)
-    finally:
-        loop.close()
-
-    completed(object(), None)
-    completed(None, RuntimeError("late native error"))
-
-
-@pytest.mark.asyncio
-async def test_capture_preserves_window_metadata_and_pixel_scale() -> None:
-    native_image = SimpleNamespace(width=1600, height=900)
-    capture_backend = CaptureBackend(native_image)
-    screenshot = await WindowScreenshotProvider(
-        WindowBackend((candidate(9),)),
-        capture_backend,
-    ).capture(9)
-
-    assert screenshot.image is native_image
-    assert screenshot.image_size.width == 1600
-    assert screenshot.image_size.height == 900
-    assert screenshot.point_pixel_scale_x == 2
-    assert screenshot.point_pixel_scale_y == 1.5
-    assert screenshot.window.window_id == 9
-    assert capture_backend.captured == [9]
-
-
-def test_native_capture_revalidation_checks_bundle_pid_and_visibility() -> None:
-    class NativeApplication:
-        def __init__(self, bundle: str, process_id: int) -> None:
-            self.bundle = bundle
-            self.process_id = process_id
-
-        def bundleIdentifier(self) -> str:
-            return self.bundle
-
-        def processID(self) -> int:
-            return self.process_id
-
-    class NativeWindow:
-        def __init__(self, bundle: str, process_id: int, on_screen: bool) -> None:
-            self.application = NativeApplication(bundle, process_id)
-            self.on_screen = on_screen
-
-        def windowID(self) -> int:
-            return 9
-
-        def owningApplication(self) -> NativeApplication:
-            return self.application
-
-        def isOnScreen(self) -> bool:
-            return self.on_screen
-
-    selected = candidate(9)
-    assert _native_window_matches_candidate(
-        NativeWindow(CHESS_BUNDLE_IDENTIFIER, 42, True), selected
-    )
-    assert not _native_window_matches_candidate(
-        NativeWindow("com.example.Other", 42, True), selected
-    )
-    assert not _native_window_matches_candidate(
-        NativeWindow(CHESS_BUNDLE_IDENTIFIER, 99, True), selected
-    )
-    assert not _native_window_matches_candidate(
-        NativeWindow(CHESS_BUNDLE_IDENTIFIER, 42, False), selected
-    )
-
-
-@pytest.mark.asyncio
-async def test_capture_rejects_stale_or_non_chess_window() -> None:
-    provider = WindowScreenshotProvider(
-        WindowBackend((candidate(9, bundle="com.example.Other"),)),
-        CaptureBackend(SimpleNamespace(width=100, height=100)),
-    )
-
-    with pytest.raises(WindowUnavailableError):
-        await provider.capture(9)
 
 
 def test_direct_permission_status_functions_load_only_the_required_framework(
@@ -821,7 +612,6 @@ class PermissionBackend:
         return True
 
 
-@pytest.mark.asyncio
 async def test_permission_snapshot_and_verify_never_prompt() -> None:
     backend = PermissionBackend()
     controller = PermissionController(backend)
@@ -837,7 +627,6 @@ async def test_permission_snapshot_and_verify_never_prompt() -> None:
     assert backend.requests == []
 
 
-@pytest.mark.asyncio
 async def test_selective_permission_verification_ignores_unneeded_grants() -> None:
     backend = PermissionBackend()
     backend.accessibility = True
@@ -849,7 +638,6 @@ async def test_selective_permission_verification_ignores_unneeded_grants() -> No
     assert backend.requests == []
 
 
-@pytest.mark.asyncio
 async def test_request_missing_prompts_only_missing_permissions() -> None:
     backend = PermissionBackend()
 
@@ -870,6 +658,50 @@ def test_ax_element_collection_accepts_native_iterables() -> None:
     )
     assert _ApplicationServicesChessAccessibilityBackend._elements(None) == ()
     assert _ApplicationServicesChessAccessibilityBackend._elements("not-elements") == ()
+
+
+def hit_test_backend(
+    *,
+    hit: object,
+    process_identifier: object = (0, 10),
+    description: object = (0, "white pawn, e2"),
+) -> _ApplicationServicesChessAccessibilityBackend:
+    backend = object.__new__(_ApplicationServicesChessAccessibilityBackend)
+    backend._ax = SimpleNamespace(
+        kAXDescriptionAttribute="AXDescription",
+        AXUIElementCopyElementAtPosition=Mock(return_value=hit),
+        AXUIElementGetPid=Mock(return_value=process_identifier),
+        AXUIElementCopyAttributeValue=Mock(return_value=description),
+    )
+    backend._system = "system"
+    return backend
+
+
+def test_hit_test_reports_the_square_owned_by_the_bound_process() -> None:
+    backend = hit_test_backend(hit=(0, "element"))
+
+    assert backend.square_at_point(10, 12.5, 34.5) == "e2"
+    backend._ax.AXUIElementCopyElementAtPosition.assert_called_once_with(
+        "system", 12.5, 34.5, None
+    )
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"hit": (-25202, None)},
+        {"hit": (0, None)},
+        {"hit": "unreadable"},
+        {"hit": (0, "element"), "process_identifier": (0, 11)},
+        {"hit": (0, "element"), "process_identifier": (-25202, -1)},
+        {"hit": (0, "element"), "description": (0, "board")},
+        {"hit": (0, "element"), "description": (-25205, None)},
+    ],
+)
+def test_hit_test_reports_nothing_when_the_point_is_not_a_bound_square(
+    overrides: dict[str, object],
+) -> None:
+    assert hit_test_backend(**overrides).square_at_point(10, 12.5, 34.5) is None
 
 
 def test_native_event_backend_creates_combined_session_source() -> None:
@@ -909,7 +741,6 @@ class EventBackend:
         self.posts.append(event)
 
 
-@pytest.mark.asyncio
 async def test_event_poster_fails_closed_when_event_source_is_unavailable() -> None:
     class SourceUnavailableBackend(EventBackend):
         def create_source(self) -> None:
@@ -924,7 +755,6 @@ async def test_event_poster_fails_closed_when_event_source_is_unavailable() -> N
     assert backend.posts == []
 
 
-@pytest.mark.asyncio
 async def test_event_poster_posts_complete_pairs_in_order() -> None:
     backend = EventBackend(("down", "up"))
     poster = CGEventPoster(backend)
@@ -935,7 +765,6 @@ async def test_event_poster_posts_complete_pairs_in_order() -> None:
     assert backend.posts == ["down", "up"]
 
 
-@pytest.mark.asyncio
 async def test_event_poster_serializes_concurrent_event_pairs() -> None:
     class BlockingBackend(EventBackend):
         def __init__(self, event_loop: asyncio.AbstractEventLoop) -> None:
@@ -968,7 +797,6 @@ async def test_event_poster_serializes_concurrent_event_pairs() -> None:
     assert backend.posts == ["down", "up", "down", "up"]
 
 
-@pytest.mark.asyncio
 async def test_event_poster_retries_release_after_partial_pair_failure() -> None:
     class ReleaseFailingBackend(EventBackend):
         def post(self, event: object) -> None:
@@ -984,7 +812,6 @@ async def test_event_poster_retries_release_after_partial_pair_failure() -> None
     assert backend.posts == ["down", "up", "up"]
 
 
-@pytest.mark.asyncio
 async def test_event_poster_posts_nothing_when_exact_chess_pid_is_not_frontmost() -> (
     None
 ):
@@ -997,7 +824,6 @@ async def test_event_poster_posts_nothing_when_exact_chess_pid_is_not_frontmost(
     assert backend.posts == []
 
 
-@pytest.mark.asyncio
 async def test_event_poster_posts_nothing_when_either_event_is_missing() -> None:
     backend = EventBackend(("down", None))
 
@@ -1024,7 +850,6 @@ class FakeApplication:
         self.posted_events.append((event, at_start))
 
 
-@pytest.mark.asyncio
 async def test_appkit_host_returns_exit_code_and_stops_injected_run_loop() -> None:
     fake = FakeApplication()
     host = AppKitHost(fake)
@@ -1058,7 +883,6 @@ async def test_appkit_host_returns_exit_code_and_stops_injected_run_loop() -> No
     assert result == 143
 
 
-@pytest.mark.asyncio
 async def test_appkit_host_stop_before_run_never_enters_native_loop() -> None:
     fake = FakeApplication()
     host = AppKitHost(fake)

@@ -51,7 +51,7 @@ class EventBackend(Protocol):
 
 class _QuartzEventBackend:
     def __init__(self) -> None:
-        from ._native import load_framework
+        from .native import load_framework
 
         self._appkit = load_framework("AppKit")
         self._quartz = load_framework("Quartz")

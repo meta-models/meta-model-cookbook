@@ -38,7 +38,7 @@ export MODEL_API_KEY="<your Meta Model API key>"
 voice-chess --request-permissions
 ```
 
-Allow the terminal or Python host under **System Settings > Privacy & Security > Microphone**, **Accessibility**, and **Screen Recording**. If macOS asks you to restart the host after granting Screen Recording, close and reopen that terminal before running Voice Chess.
+Allow the terminal or Python host under **System Settings > Privacy & Security > Microphone**, **Accessibility**, and **Screen Recording**. Screen Recording is required for ScreenCaptureKit window discovery; Voice Chess does not capture screenshots. If macOS asks you to restart the host after granting Screen Recording, close and reopen that terminal before running Voice Chess.
 
 The recipe uses the fixed public Muse Voice Transcribe contract `muse-voice-transcribe-1.0` at `wss://api.meta.ai/v1/asr/realtime`. Realtime transcription access may be limited during rollout.
 
@@ -62,7 +62,7 @@ voice-chess --dry-run
 
 The overlay is always enabled. Its HUD reports `VOICE`, `TURN`, and `HEARD` as soon as startup reaches the display stage, even while board detection is still searching. When the bound Chess process exposes a supported board, the same passive overlay draws the labeled grid. The overlay is observational and does not broaden what the executor may click.
 
-If visual tracking cannot validate the board, the terminal reports one bounded warning such as `screen_capture_permission`, `window_discovery_timeout`, `capture_timeout`, `window_unavailable`, `window_ambiguous`, `unsupported_aspect`, `unsupported_orientation`, or `layout_mismatch`. Repeated detection attempts do not repeat the same warning. Keep a single visible, non-minimized, White-at-bottom Apple Chess game window in the standard layout; for `screen_capture_permission`, grant Screen Recording to the terminal or Python host and restart that host.
+If visual tracking cannot validate the board, the terminal reports one bounded warning such as `screen_capture_permission`, `window_discovery_timeout`, `window_unavailable`, `window_ambiguous`, `unsupported_orientation`, `layout_mismatch`, or `detection_failed`. Repeated detection attempts do not repeat the same warning. Keep a single visible, non-minimized, White-at-bottom Apple Chess game window in the standard layout; for `screen_capture_permission`, grant Screen Recording to the terminal or Python host and restart that host.
 
 Then enable automatic validated execution:
 
@@ -96,18 +96,20 @@ The parsed move is a proposal, not permission to click. The local executor must 
 
 ## Supported Layout
 
-The coordinate calibration is derived from a `979x768` Apple Chess window with White at the bottom. Voice Chess validates the window geometry and semantic Accessibility landmarks before using that calibration.
+The board geometry comes from a window-relative calibration measured on a `979x768` Apple Chess window with White at the bottom, and the window aspect ratio must stay within 3% of that reference. Accessibility landmarks for A1, H1, A8, and H8 then validate the result: every distance between them must agree with the calibrated quad within 5%, and the wider rank identifies the near side of the board. Apple Chess reports landmark positions with the vertical axis inverted, so only the distances between landmarks are compared, never their positions. No screenshot is captured.
 
 Voice Chess rejects Black-at-bottom boards, auto-rotating Human-vs-Human boards, and any unsupported or ambiguous layout. Use one visible, non-minimized Apple Chess game window and keep its standard board layout.
+
+Apple Chess draws its pieces standing up, so a tall piece covers part of the square behind it and the centre of that square is not always clickable. Before any input, Voice Chess asks Accessibility which square each click point resolves to, and aims progressively further towards the square's far edge until the answer is the intended square. A square that never resolves, or that resolves to another process, blocks the move with `squareNotClickable` and nothing is clicked.
 
 ## Safety and Data
 
 - Only the exact `com.apple.Chess` process may be acquired. Its PID is immutable for the run, native input requires it to be active, and stopping Voice Chess never sends Chess a quit or terminate request.
-- The bound process must expose exactly one visible, non-minimized game window with a complete, stable, geometry-validated 64-square Accessibility snapshot.
-- The app revalidates the bound window, board, PID, focus, source, and destination before input and confirms that both source and destination changed afterward. Failed checks execute nothing, and native input is never retried automatically.
+- The bound process must expose exactly one visible, non-minimized game window, valid A1/H1/A8/H8 Accessibility landmarks, and a complete, stable, geometry-validated 64-square Accessibility snapshot before input.
+- The app revalidates the bound window, board, PID, focus, source, and destination before input, requires each click point to resolve to its intended square inside the bound process, and confirms that both source and destination changed afterward. Failed checks execute nothing, and native input is never retried automatically.
 - Partial, stale, duplicate, superseded, and busy-overlapping transcription events cannot authorize a move. Microphone frames observed during a move are dropped until a local quiet boundary rearms capture.
 - Dry run performs the same binding and board validation but posts no native input. The always-on HUD remains visible while the board is being acquired, and the passive overlay ignores mouse events.
-- Transcripts are sent only to Muse Voice Transcribe. Screenshots are processed locally and are never uploaded. Accessibility state, window data, coordinates, overlay state, and native input events also remain local.
+- Transcripts are sent only to Muse Voice Transcribe. Window metadata, Accessibility state, coordinates, overlay state, and native input events are processed locally and are never uploaded.
 
 ## Safety Smoke Tests
 

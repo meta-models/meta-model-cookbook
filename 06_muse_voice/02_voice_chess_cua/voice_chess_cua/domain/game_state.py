@@ -486,7 +486,3 @@ def _square_index(square: ChessSquare) -> int:
 
 def _sign(value: int) -> int:
     return (value > 0) - (value < 0)
-
-
-ChessPosition = ChessGameState
-InferredMove = MoveInference

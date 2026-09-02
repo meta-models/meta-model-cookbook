@@ -334,9 +334,3 @@ def _normalize_display_text(value: str, *, maximum_length: int) -> str:
         return single_line
     marker = "." * min(3, maximum_length)
     return f"{single_line[: maximum_length - len(marker)].rstrip()}{marker}"
-
-
-HudPhase = HUDPhase
-HudState = HUDState
-HudUpdate = HUDUpdate
-HudPresentation = HUDPresentation

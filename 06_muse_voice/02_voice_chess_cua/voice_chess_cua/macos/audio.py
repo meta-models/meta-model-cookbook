@@ -53,7 +53,7 @@ class AudioBackend(Protocol):
 
 class _AVFoundationAudioBackend:
     def __init__(self) -> None:
-        from ._native import load_framework
+        from .native import load_framework
 
         self._av_foundation = load_framework("AVFoundation")
         self._engine: Any | None = None

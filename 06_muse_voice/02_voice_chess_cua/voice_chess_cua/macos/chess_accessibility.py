@@ -38,6 +38,10 @@ class ChessAccessibilityBackend(Protocol):
         self, process_identifier: int
     ) -> tuple[str, Mapping[str, str]]: ...
 
+    def square_at_point(
+        self, process_identifier: int, x: float, y: float
+    ) -> str | None: ...
+
 
 _SQUARE_SUFFIX = re.compile(r"(?:^|, )([a-h][1-8])$")
 _CORNER_SQUARES = frozenset({"a1", "h1", "a8", "h8"})
@@ -45,9 +49,10 @@ _CORNER_SQUARES = frozenset({"a1", "h1", "a8", "h8"})
 
 class _ApplicationServicesChessAccessibilityBackend:
     def __init__(self) -> None:
-        from ._native import load_framework
+        from .native import load_framework
 
         self._ax = load_framework("ApplicationServices")
+        self._system = self._ax.AXUIElementCreateSystemWide()
 
     def square_centers(self, process_identifier: int) -> Mapping[str, Point]:
         window = self._single_window(process_identifier)
@@ -75,6 +80,32 @@ class _ApplicationServicesChessAccessibilityBackend:
         if set(labels) != squares:
             raise ChessAccessibilityError("Apple Chess square state is incomplete.")
         return title, labels
+
+    def square_at_point(
+        self, process_identifier: int, x: float, y: float
+    ) -> str | None:
+        """The square a click at this screen point would land on, if any.
+
+        Hit testing resolves a screen point exactly as a posted click does, so
+        this reports the square Apple Chess would actually receive, including
+        the case where a piece drawn on a nearer rank covers the point.
+        """
+
+        result = self._ax.AXUIElementCopyElementAtPosition(self._system, x, y, None)
+        if not isinstance(result, tuple) or len(result) != 2 or int(result[0]) != 0:
+            return None
+        element = result[1]
+        if element is None or self._process_of(element) != process_identifier:
+            return None
+        description = self._attribute(element, self._ax.kAXDescriptionAttribute)
+        match = _SQUARE_SUFFIX.search(str(description or "").strip().lower())
+        return match.group(1) if match is not None else None
+
+    def _process_of(self, element: object) -> int | None:
+        result = self._ax.AXUIElementGetPid(element, None)
+        if not isinstance(result, tuple) or len(result) != 2 or int(result[0]) != 0:
+            return None
+        return int(result[1])
 
     def _single_window(self, process_identifier: int) -> object:
         application = self._ax.AXUIElementCreateApplication(process_identifier)
@@ -199,6 +230,13 @@ class ChessBoardAccessibilityProbe:
         self, process_identifier: int
     ) -> tuple[str, Mapping[str, str]]:
         return await asyncio.to_thread(self.backend.game_snapshot, process_identifier)
+
+    async def square_at_point(
+        self, process_identifier: int, point: Point
+    ) -> str | None:
+        return await asyncio.to_thread(
+            self.backend.square_at_point, process_identifier, point.x, point.y
+        )
 
 
 @dataclass(frozen=True, slots=True)

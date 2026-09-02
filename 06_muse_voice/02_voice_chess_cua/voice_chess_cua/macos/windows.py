@@ -15,8 +15,8 @@ from typing import Any, Protocol
 
 from voice_chess_cua.domain.geometry import Rect
 
-from ._asyncio import call_soon_threadsafe_if_open
 from .application import CHESS_BUNDLE_IDENTIFIER
+from .native import call_soon_threadsafe_if_open
 
 
 class ChessWindowError(RuntimeError):
@@ -53,8 +53,6 @@ class ChessWindowDescriptor:
     title: str | None
     application_name: str
     process_id: int
-    is_frontmost: bool
-    display_ids: tuple[int, ...]
     bundle_identifier: str = CHESS_BUNDLE_IDENTIFIER
 
 
@@ -65,8 +63,6 @@ class WindowCandidate:
     title: str | None
     application_name: str
     process_id: int
-    is_frontmost: bool
-    display_ids: tuple[int, ...]
     bundle_identifier: str
     is_on_screen: bool
 
@@ -79,27 +75,19 @@ class _ScreenCaptureKitWindowBackend:
     def __init__(self, *, shareable_content_timeout: float = 3.0) -> None:
         if shareable_content_timeout <= 0:
             raise ValueError("shareable_content_timeout must be positive")
-        from ._native import load_framework
+        from .native import load_framework
 
         self._screen_capture_kit = load_framework("ScreenCaptureKit")
         self._shareable_content_timeout = shareable_content_timeout
 
     async def windows(self) -> tuple[WindowCandidate, ...]:
         content = await self._shareable_content()
-        display_frames = tuple(
-            self._display_frame(display) for display in content.displays()
-        )
         candidates: list[WindowCandidate] = []
         for window in content.windows():
             application = window.owningApplication()
             if application is None:
                 continue
             frame = _rect_from_native(window.frame())
-            display_ids = tuple(
-                display_id
-                for display_id, display_frame in display_frames
-                if _intersects(frame, display_frame)
-            )
             candidates.append(
                 WindowCandidate(
                     window_id=int(window.windowID()),
@@ -107,8 +95,6 @@ class _ScreenCaptureKitWindowBackend:
                     title=window.title(),
                     application_name=str(application.applicationName() or ""),
                     process_id=int(application.processID()),
-                    is_frontmost=bool(window.isActive()),
-                    display_ids=display_ids,
                     bundle_identifier=str(application.bundleIdentifier() or ""),
                     is_on_screen=bool(window.isOnScreen()),
                 )
@@ -150,10 +136,6 @@ class _ScreenCaptureKitWindowBackend:
             raise ShareableContentTimedOutError(
                 "ScreenCaptureKit window discovery timed out"
             ) from error
-
-    @staticmethod
-    def _display_frame(display: Any) -> tuple[int, Rect]:
-        return int(display.displayID()), _rect_from_native(display.frame())
 
 
 def _native_error_code(error: object) -> int | None:
@@ -207,8 +189,6 @@ class ChessWindowLocator:
             title=selected.title,
             application_name=selected.application_name,
             process_id=selected.process_id,
-            is_frontmost=selected.is_frontmost,
-            display_ids=selected.display_ids,
             bundle_identifier=selected.bundle_identifier,
         )
 
@@ -229,12 +209,3 @@ def _rect_from_native(rect: Any) -> Rect:
         raise ChessWindowError(
             "Apple Chess reported an invalid window frame"
         ) from error
-
-
-def _intersects(left: Rect, right: Rect) -> bool:
-    return not (
-        left.max_x <= right.min_x
-        or right.max_x <= left.min_x
-        or left.max_y <= right.min_y
-        or right.max_y <= left.min_y
-    )

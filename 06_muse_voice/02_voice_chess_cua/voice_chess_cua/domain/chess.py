@@ -4,7 +4,7 @@
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
 
-"""Validated chess-domain values and the single executable voice command."""
+"""Validated chess-domain values."""
 
 from __future__ import annotations
 
@@ -95,25 +95,3 @@ class ChessMove:
             raise TypeError("source and destination must be ChessSquare values")
         if self.source == self.destination:
             raise ValueError("source and destination must differ")
-
-
-class VoiceAction(StrEnum):
-    MOVE = "move"
-
-
-@dataclass(frozen=True, slots=True)
-class VoiceCommand:
-    """The only executable planner capability: one concrete chess move."""
-
-    action: VoiceAction
-    chess_move: ChessMove
-
-    def __post_init__(self) -> None:
-        if self.action is not VoiceAction.MOVE:
-            raise ValueError(f"unsupported voice action: {self.action!r}")
-        if not isinstance(self.chess_move, ChessMove):
-            raise TypeError("move commands require a chess move")
-
-    @classmethod
-    def move(cls, move: ChessMove) -> VoiceCommand:
-        return cls(VoiceAction.MOVE, move)

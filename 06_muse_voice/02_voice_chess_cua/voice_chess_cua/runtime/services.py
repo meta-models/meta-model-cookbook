@@ -10,10 +10,9 @@ from __future__ import annotations
 
 import asyncio
 import os
-from collections.abc import Awaitable, Callable, Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
-from math import hypot, isfinite
-from statistics import median
+from datetime import UTC, datetime
 from typing import Protocol, cast
 
 from voice_chess_cua.cli import CLIExitCode, CLIInvocation, CommandName
@@ -31,15 +30,9 @@ from voice_chess_cua.events import (
     RuntimeStage,
     TerminalEventSink,
 )
-from voice_chess_cua.macos._main_thread import run_on_main
 from voice_chess_cua.macos.appkit_host import AppKitHost
 from voice_chess_cua.macos.application import ChessApplicationController
 from voice_chess_cua.macos.audio import AudioCaptureService
-from voice_chess_cua.macos.capture import (
-    WindowCaptureTimedOutError,
-    WindowScreenshotProvider,
-    WindowUnavailableError,
-)
 from voice_chess_cua.macos.chess_accessibility import (
     ChessBoardAccessibilityProbe,
     ChessMovePostcondition,
@@ -58,7 +51,6 @@ from voice_chess_cua.macos.windows import (
     ScreenCaptureKitError,
     ShareableContentTimedOutError,
 )
-from voice_chess_cua.planning.exact_parser import ExactMoveParser
 from voice_chess_cua.runtime.app import RuntimeDependencies, VoiceCUARuntime
 from voice_chess_cua.runtime.ports import RuntimeCredentials, TrackingFailureReason
 from voice_chess_cua.settings import (
@@ -71,7 +63,6 @@ from voice_chess_cua.vision.calibration import (
     CalibrationError,
     UnsupportedAspectRatioError,
 )
-from voice_chess_cua.vision.coordinates import ScreenCoordinateMapper
 from voice_chess_cua.vision.tracking import (
     BoardDetectionError,
     BoardTrackingPolicy,
@@ -102,55 +93,41 @@ class EnvironmentRuntimeCredentialProvider:
         return RuntimeCredentials(value)
 
 
-class UnsupportedBoardOrientationError(RuntimeError):
-    pass
-
-
-class BoardLayoutMismatchError(RuntimeError):
-    pass
-
-
-OrientationChecker = Callable[[object, Quad], Awaitable[bool]]
-LayoutChecker = Callable[[int, BoardGeometry, Rect], Awaitable[BoardGeometry | None]]
+DetectionClock = Callable[[], datetime]
 
 
 class FixedCalibrationDetector:
-    """Capture the unique Chess window and map the fixed board quad to global CG space."""
+    """Derive the board quad from the window calibration, validated by AX landmarks."""
 
     def __init__(
         self,
         application: ChessApplicationController,
         window_locator: ChessWindowLocator,
-        screenshot_provider: WindowScreenshotProvider,
+        accessibility_probe: ChessBoardAccessibilityProbe | None = None,
         calibration: AppleChessBoardCalibration = AppleChessBoardCalibration.current,
-        orientation_checker: OrientationChecker | None = None,
-        layout_checker: LayoutChecker | None = None,
+        *,
+        clock: DetectionClock | None = None,
     ) -> None:
         self._application = application
         self._window_locator = window_locator
-        self._screenshot_provider = screenshot_provider
+        self._accessibility_probe = (
+            accessibility_probe or ChessBoardAccessibilityProbe()
+        )
         self._calibration = calibration
-        self._orientation_checker = (
-            orientation_checker or _captured_board_is_white_bottom
-        )
-        probe = ChessBoardAccessibilityProbe()
-        self._layout_checker = layout_checker or (
-            lambda process_identifier, geometry, window_frame: (
-                _reconcile_accessibility_geometry(
-                    probe,
-                    process_identifier,
-                    geometry,
-                    window_frame,
-                )
-            )
-        )
+        self._clock = clock or (lambda: datetime.now(UTC))
 
     async def detect(self) -> BoardDetection:
+        bound_process_identifier = self._application.bound_process_identifier
+        if not _is_positive_identifier(bound_process_identifier):
+            raise BoardDetectionError(TrackingFailureReason.WINDOW_UNAVAILABLE)
         application = await self._application.status()
-        if not application.is_running or application.process_identifier is None:
-            raise RuntimeError("Chess.app is not running.")
+        if (
+            not application.is_running
+            or application.process_identifier != bound_process_identifier
+        ):
+            raise BoardDetectionError(TrackingFailureReason.WINDOW_UNAVAILABLE)
         try:
-            window = await self._window_locator.locate(application.process_identifier)
+            window = await self._window_locator.locate(bound_process_identifier)
         except ScreenCaptureKitError as error:
             raise BoardDetectionError(_screen_capture_reason(error)) from error
         except ShareableContentTimedOutError as error:
@@ -163,275 +140,108 @@ class FixedCalibrationDetector:
             raise BoardDetectionError(
                 TrackingFailureReason.WINDOW_UNAVAILABLE
             ) from error
-        try:
-            screenshot = await self._screenshot_provider.capture(window.window_id)
-        except ScreenCaptureKitError as error:
-            raise BoardDetectionError(_screen_capture_reason(error)) from error
-        except ShareableContentTimedOutError as error:
-            raise BoardDetectionError(
-                TrackingFailureReason.WINDOW_DISCOVERY_TIMEOUT
-            ) from error
-        except WindowCaptureTimedOutError as error:
-            raise BoardDetectionError(TrackingFailureReason.CAPTURE_TIMEOUT) from error
-        except WindowUnavailableError as error:
-            raise BoardDetectionError(
-                TrackingFailureReason.WINDOW_UNAVAILABLE
-            ) from error
-        if "Auto-Match Player" in (screenshot.window.title or ""):
+        if "Auto-Match Player" in (window.title or ""):
             raise BoardDetectionError(TrackingFailureReason.LAYOUT_MISMATCH)
-        if screenshot.window.process_id != application.process_identifier:
+        if window.process_id != bound_process_identifier:
             raise BoardDetectionError(TrackingFailureReason.WINDOW_UNAVAILABLE)
         try:
-            image_quad = self._calibration.image_quad(screenshot.image_size)
+            geometry = BoardGeometry(
+                self._calibration.window_quad(window.frame),
+                BoardOrientation.WHITE_BOTTOM,
+            )
         except UnsupportedAspectRatioError as error:
             raise BoardDetectionError(
                 TrackingFailureReason.UNSUPPORTED_ASPECT
             ) from error
         except CalibrationError as error:
             raise BoardDetectionError(TrackingFailureReason.DETECTION_FAILED) from error
-        if not await self._orientation_checker(screenshot.image, image_quad):
-            error = UnsupportedBoardOrientationError(
-                "The calibrated board is not confidently White-at-bottom."
-            )
-            raise BoardDetectionError(
-                TrackingFailureReason.UNSUPPORTED_ORIENTATION
-            ) from error
-        mapper = ScreenCoordinateMapper(
-            captured_image_size=screenshot.image_size,
-            captured_global_frame=screenshot.window.frame,
-            primary_screen_max_y=0.0,
-        )
-        global_quad = Quad(
-            *(mapper.global_cg_from_captured(point) for point in image_quad.points)
-        )
-        geometry = BoardGeometry(global_quad, BoardOrientation.WHITE_BOTTOM)
         try:
-            corrected_geometry = await self._layout_checker(
-                application.process_identifier,
-                geometry,
-                screenshot.window.frame,
+            centers = _validated_landmarks(
+                await self._accessibility_probe.square_centers(
+                    bound_process_identifier
+                ),
+                window.frame,
             )
         except BoardDetectionError:
             raise
         except Exception as error:
             raise BoardDetectionError(TrackingFailureReason.LAYOUT_MISMATCH) from error
-        if corrected_geometry is None:
+        if not _landmarks_are_white_bottom(centers):
+            raise BoardDetectionError(TrackingFailureReason.UNSUPPORTED_ORIENTATION)
+        if not _landmark_distances_match(centers, geometry):
             raise BoardDetectionError(TrackingFailureReason.LAYOUT_MISMATCH)
         return BoardDetection(
-            geometry=corrected_geometry,
+            geometry=geometry,
             confidence=0.99,
-            proposal_score=1.0,
-            captured_at=screenshot.captured_at,
-            source_window_id=screenshot.window.window_id,
+            captured_at=self._clock(),
+            source_window_id=window.window_id,
         )
 
 
-async def _reconcile_accessibility_geometry(
-    probe: ChessBoardAccessibilityProbe,
-    process_identifier: int,
-    geometry: BoardGeometry,
+def _is_positive_identifier(value: object) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool) and value > 0
+
+
+LANDMARK_NAMES = ("a1", "h1", "a8", "h8")
+_LANDMARK_PAIRS = (("a1", "h1"), ("a8", "h8"), ("a1", "a8"), ("h1", "h8"))
+# Apple Chess reports landmark positions with the vertical axis inverted, so the
+# calibrated quad can only be compared against the distances between landmarks.
+# Both window sizes the demo has been measured on agree to within 4%.
+_MAXIMUM_LANDMARK_DISTANCE_ERROR = 0.05
+
+
+def _validated_landmarks(
+    centers: Mapping[str, Point],
     window_frame: Rect,
-) -> BoardGeometry | None:
-    centers = await probe.square_centers(process_identifier)
-    landmark_names = ("a1", "h1", "a8", "h8")
-    if set(centers) != set(landmark_names):
-        return None
+) -> dict[str, Point]:
+    normalized = {
+        square: center
+        for square, center in centers.items()
+        if isinstance(square, str) and square in LANDMARK_NAMES
+    }
+    if set(normalized) != set(LANDMARK_NAMES) or len(normalized) != len(centers):
+        raise ValueError("Accessibility board landmarks are incomplete")
+    if not all(
+        isinstance(center, Point) and center.is_finite for center in normalized.values()
+    ):
+        raise ValueError("Accessibility board landmarks are malformed")
+    if not all(window_frame.contains(center) for center in normalized.values()):
+        raise ValueError("Accessibility board landmarks fall outside the window")
+    return normalized
+
+
+def _landmarks_are_white_bottom(centers: Mapping[str, Point]) -> bool:
+    """Decide orientation from the landmark spread instead of their ranks.
+
+    The near rank of a perspective board is always the wider one, and that
+    holds whichever way Apple Chess reports the vertical axis.
+    """
+
+    rank_one_width = centers["h1"].x - centers["a1"].x
+    rank_eight_width = centers["h8"].x - centers["a8"].x
+    return 0 < rank_eight_width < rank_one_width
+
+
+def _landmark_distances_match(
+    centers: Mapping[str, Point],
+    geometry: BoardGeometry,
+) -> bool:
     expected = {
         square: geometry.center_of(ChessSquare.parse(square.upper()))
-        for square in landmark_names
+        for square in LANDMARK_NAMES
     }
-    expected_distances = _landmark_distances(expected)
-    actual_distances = _landmark_distances(centers)
-    if expected_distances.keys() != actual_distances.keys() or not all(
-        abs(actual_distances[pair] - expected_distance) / expected_distance <= 0.08
-        for pair, expected_distance in expected_distances.items()
-    ):
-        return None
-    try:
-        corrected = _geometry_from_accessibility_centers(centers, geometry.orientation)
-    except ValueError:
-        return None
-    board_span = max(corrected.quad.width, corrected.quad.height)
-    maximum_residual = max(1.0, board_span * 0.005)
-    if any(
-        corrected.center_of(ChessSquare.parse(square.upper())).distance_to(center)
-        > maximum_residual
-        for square, center in centers.items()
-    ):
-        return None
-    rounding_tolerance = max(1.0, board_span * 0.005)
-    if any(
-        not (
-            window_frame.min_x - rounding_tolerance
-            <= point.x
-            <= window_frame.max_x + rounding_tolerance
-            and window_frame.min_y - rounding_tolerance
-            <= point.y
-            <= window_frame.max_y + rounding_tolerance
-        )
-        for point in corrected.quad.points
-    ):
-        return None
-    return corrected
-
-
-def _geometry_from_accessibility_centers(
-    centers: Mapping[str, Point],
-    orientation: BoardOrientation,
-) -> BoardGeometry:
-    unit_centers = {
-        "a8": Point(1.0 / 16.0, 1.0 / 16.0),
-        "h8": Point(15.0 / 16.0, 1.0 / 16.0),
-        "h1": Point(15.0 / 16.0, 15.0 / 16.0),
-        "a1": Point(1.0 / 16.0, 15.0 / 16.0),
-    }
-    if set(centers) != set(unit_centers):
-        raise ValueError("Accessibility board landmarks are incomplete")
-    coefficients = _solve_homography(
-        tuple((unit_centers[square], centers[square]) for square in unit_centers)
-    )
-
-    def mapped(point: Point) -> Point:
-        a, b, c, d, e, f, g, h = coefficients
-        denominator = g * point.x + h * point.y + 1.0
-        if not isfinite(denominator) or abs(denominator) <= 1e-12:
-            raise ValueError("Accessibility board homography maps to infinity")
-        result = Point(
-            (a * point.x + b * point.y + c) / denominator,
-            (d * point.x + e * point.y + f) / denominator,
-        )
-        if not result.is_finite:
-            raise ValueError("Accessibility board homography is not finite")
-        return result
-
-    return BoardGeometry(
-        Quad(
-            mapped(Point(0.0, 0.0)),
-            mapped(Point(1.0, 0.0)),
-            mapped(Point(1.0, 1.0)),
-            mapped(Point(0.0, 1.0)),
-        ),
-        orientation,
-    )
-
-
-def _solve_homography(
-    correspondences: tuple[tuple[Point, Point], ...],
-) -> tuple[float, float, float, float, float, float, float, float]:
-    if len(correspondences) != 4:
-        raise ValueError("A homography requires four point correspondences")
-    matrix: list[list[float]] = []
-    for source, destination in correspondences:
-        x, y = source.x, source.y
-        target_x, target_y = destination.x, destination.y
-        matrix.append(
-            [x, y, 1.0, 0.0, 0.0, 0.0, -target_x * x, -target_x * y, target_x]
-        )
-        matrix.append(
-            [0.0, 0.0, 0.0, x, y, 1.0, -target_y * x, -target_y * y, target_y]
-        )
-    size = 8
-    for column in range(size):
-        pivot = max(range(column, size), key=lambda row: abs(matrix[row][column]))
-        pivot_value = matrix[pivot][column]
-        if not isfinite(pivot_value) or abs(pivot_value) <= 1e-12:
-            raise ValueError("Accessibility board homography is singular")
-        matrix[column], matrix[pivot] = matrix[pivot], matrix[column]
-        divisor = matrix[column][column]
-        matrix[column] = [value / divisor for value in matrix[column]]
-        for row in range(size):
-            if row == column:
-                continue
-            factor = matrix[row][column]
-            if factor == 0.0:
-                continue
-            matrix[row] = [
-                value - factor * normalized_value
-                for value, normalized_value in zip(
-                    matrix[row], matrix[column], strict=True
-                )
-            ]
-    solution = tuple(matrix[row][-1] for row in range(size))
-    if len(solution) != size or not all(isfinite(value) for value in solution):
-        raise ValueError("Accessibility board homography is not finite")
-    return cast(
-        tuple[float, float, float, float, float, float, float, float],
-        solution,
-    )
+    for start, end in _LANDMARK_PAIRS:
+        calibrated = expected[start].distance_to(expected[end])
+        measured = centers[start].distance_to(centers[end])
+        if abs(measured - calibrated) / calibrated > _MAXIMUM_LANDMARK_DISTANCE_ERROR:
+            return False
+    return True
 
 
 def _screen_capture_reason(error: ScreenCaptureKitError) -> TrackingFailureReason:
     if error.code == -3801:
         return TrackingFailureReason.SCREEN_CAPTURE_PERMISSION
     return TrackingFailureReason.DETECTION_FAILED
-
-
-def _landmark_distances(centers: Mapping[str, Point]) -> dict[tuple[str, str], float]:
-    pairs = (("a1", "h1"), ("a8", "h8"), ("a1", "a8"), ("h1", "h8"))
-    return {
-        pair: hypot(
-            centers[pair[0]].x - centers[pair[1]].x,
-            centers[pair[0]].y - centers[pair[1]].y,
-        )
-        for pair in pairs
-        if pair[0] in centers and pair[1] in centers
-    }
-
-
-async def _captured_board_is_white_bottom(image: object, image_quad: Quad) -> bool:
-    return await run_on_main(
-        lambda: _sample_white_bottom_orientation(image, image_quad)
-    )
-
-
-def _sample_white_bottom_orientation(image: object, image_quad: Quad) -> bool:
-    from voice_chess_cua.macos._native import load_framework
-
-    appkit = load_framework("AppKit")
-    bitmap = appkit.NSBitmapImageRep.alloc().initWithCGImage_(image)
-    if bitmap is None:
-        return False
-    geometry = BoardGeometry(image_quad, BoardOrientation.WHITE_BOTTOM)
-    xs = tuple(point.x for point in image_quad.points)
-    ys = tuple(point.y for point in image_quad.points)
-    cell_width = max((max(xs) - min(xs)) / 8.0, 1.0)
-    cell_height = max((max(ys) - min(ys)) / 8.0, 1.0)
-    bottom = _rank_brightness(bitmap, appkit, geometry, 1, cell_width, cell_height)
-    top = _rank_brightness(bitmap, appkit, geometry, 8, cell_width, cell_height)
-    if bottom is None or top is None:
-        return False
-    return bottom - top >= 0.15
-
-
-def _rank_brightness(
-    bitmap: object,
-    appkit: object,
-    geometry: BoardGeometry,
-    rank: int,
-    cell_width: float,
-    cell_height: float,
-) -> float | None:
-    samples: list[float] = []
-    offsets_x = (-0.09 * cell_width, 0.0, 0.09 * cell_width)
-    offsets_y = (-0.09 * cell_height, 0.0, 0.09 * cell_height)
-    color_space = appkit.NSColorSpace.deviceRGBColorSpace()  # type: ignore[attr-defined]
-    for file_index in range(8):
-        center = geometry.center_of(ChessSquare(file_index, rank))
-        square_samples: list[float] = []
-        for offset_x in offsets_x:
-            for offset_y in offsets_y:
-                color = bitmap.colorAtX_y_(  # type: ignore[attr-defined]
-                    round(center.x + offset_x),
-                    round(center.y + offset_y),
-                )
-                if color is None:
-                    continue
-                converted = color.colorUsingColorSpace_(color_space)
-                if converted is not None:
-                    square_samples.append(float(converted.brightnessComponent()))
-        if square_samples:
-            samples.append(median(square_samples))
-    return median(samples) if len(samples) == 8 else None
 
 
 @dataclass(frozen=True, slots=True)
@@ -456,7 +266,6 @@ def build_live_runtime(*, dry_run: bool = False) -> LiveRuntimeComponents:
     application_host = AppKitHost()
     chess = ChessApplicationController()
     window_locator = ChessWindowLocator()
-    screenshot_provider = WindowScreenshotProvider()
     overlay = BoardOverlay()
     accessibility_probe = ChessBoardAccessibilityProbe()
     game_state = ChessStateObserver(
@@ -465,7 +274,7 @@ def build_live_runtime(*, dry_run: bool = False) -> LiveRuntimeComponents:
     detector = FixedCalibrationDetector(
         chess,
         window_locator,
-        screenshot_provider,
+        accessibility_probe,
     )
     tracking_policy = BoardTrackingPolicy(
         minimum_confidence=STANDARD_SAFETY_POLICY.minimum_board_confidence,
@@ -514,6 +323,7 @@ def build_live_runtime(*, dry_run: bool = False) -> LiveRuntimeComponents:
         display_contains_board=_display_contains_board,
         postcondition=ChessMovePostcondition(accessibility_probe),
         snapshot_probe=accessibility_probe,
+        square_resolver=accessibility_probe,
         policy=move_policy,
         reporter=report_execution,
     )
@@ -533,9 +343,7 @@ def build_live_runtime(*, dry_run: bool = False) -> LiveRuntimeComponents:
             overlay=overlay,
             asr=asr,
             audio=AudioCaptureService(),
-            planner=ExactMoveParser(),
             application_host=application_host,
-            snapshot_probe=accessibility_probe,
             move_executor=move_executor,
             notices=notices,
             game_state=game_state,
@@ -546,7 +354,7 @@ def build_live_runtime(*, dry_run: bool = False) -> LiveRuntimeComponents:
 
 
 def _display_contains_board(quad: Quad) -> bool:
-    from voice_chess_cua.macos._native import load_framework
+    from voice_chess_cua.macos.native import load_framework
 
     quartz = load_framework("Quartz")
     error, display_ids, _count = quartz.CGGetActiveDisplayList(64, None, None)

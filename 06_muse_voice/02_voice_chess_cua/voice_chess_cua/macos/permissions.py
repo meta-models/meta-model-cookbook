@@ -14,7 +14,7 @@ from enum import StrEnum
 from types import ModuleType
 from typing import Protocol
 
-from ._asyncio import call_soon_threadsafe_if_open
+from .native import call_soon_threadsafe_if_open
 
 
 class PermissionGrant(StrEnum):
@@ -67,7 +67,7 @@ class PermissionBackend(Protocol):
 
 
 def _load_native_framework(module_name: str) -> ModuleType:
-    from ._native import load_framework
+    from .native import load_framework
 
     return load_framework(module_name)
 

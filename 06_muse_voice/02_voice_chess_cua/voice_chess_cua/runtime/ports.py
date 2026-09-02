@@ -6,10 +6,10 @@
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator, Mapping
+from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import TYPE_CHECKING, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Protocol
 
 from voice_chess_cua.domain.chess import ChessMove, ChessSquare
 
@@ -30,7 +30,6 @@ class RuntimeCredentials:
 class TrackingFailureReason(StrEnum):
     SCREEN_CAPTURE_PERMISSION = "screen_capture_permission"
     WINDOW_DISCOVERY_TIMEOUT = "window_discovery_timeout"
-    CAPTURE_TIMEOUT = "capture_timeout"
     WINDOW_UNAVAILABLE = "window_unavailable"
     WINDOW_AMBIGUOUS = "window_ambiguous"
     UNSUPPORTED_ASPECT = "unsupported_aspect"
@@ -114,31 +113,26 @@ VoiceEvent = (
 )
 
 
-@runtime_checkable
 class SettingsPort(Protocol):
     async def load_validated(self) -> object:
         """Load and validate the fixed runtime settings."""
 
 
-@runtime_checkable
 class CredentialPort(Protocol):
     async def load_runtime_credentials(self) -> RuntimeCredentials:
         """Load the shared Meta Model API key without exposing its value."""
 
 
-@runtime_checkable
 class PermissionPort(Protocol):
     async def verify_required(self) -> None:
         """Raise if any required permission is unavailable; never prompt."""
 
 
-@runtime_checkable
 class ChessApplicationPort(Protocol):
     async def activate(self) -> object:
         """Activate the exact Apple Chess application or raise."""
 
 
-@runtime_checkable
 class GameStateObserverPort(Protocol):
     def observations(self, process_identifier: int) -> AsyncIterator[object]: ...
 
@@ -147,7 +141,6 @@ class GameStateObserverPort(Protocol):
     def reset(self) -> None: ...
 
 
-@runtime_checkable
 class TrackingPort(Protocol):
     async def start(self, *, generation: int) -> None: ...
 
@@ -156,7 +149,6 @@ class TrackingPort(Protocol):
     async def stop(self) -> None: ...
 
 
-@runtime_checkable
 class OverlayPort(Protocol):
     async def show_stable(
         self,
@@ -179,7 +171,6 @@ class OverlayPort(Protocol):
         """Destroy overlay resources on the AppKit main thread."""
 
 
-@runtime_checkable
 class ASRPort(Protocol):
     @property
     def generation(self) -> int: ...
@@ -197,7 +188,6 @@ class ASRPort(Protocol):
     async def disconnect(self) -> None: ...
 
 
-@runtime_checkable
 class AudioPort(Protocol):
     def set_transaction_busy(self, busy: bool) -> None: ...
 
@@ -210,32 +200,12 @@ class AudioPort(Protocol):
     async def drain(self) -> None: ...
 
 
-@runtime_checkable
-class SnapshotProbePort(Protocol):
-    async def game_snapshot(
-        self,
-        process_identifier: int,
-    ) -> tuple[str, Mapping[str, str]]: ...
-
-
-@runtime_checkable
 class PreparedMoveExecutorPort(Protocol):
-    async def prepare(
-        self,
-        move: ChessMove,
-        *,
-        expires_at: float | None = None,
-    ) -> PreparedMove: ...
+    async def prepare(self, move: ChessMove) -> PreparedMove: ...
 
     async def execute_prepared(self, prepared: PreparedMove) -> object: ...
 
 
-@runtime_checkable
-class PlannerPort(Protocol):
-    async def plan(self, supervised_command: object) -> object: ...
-
-
-@runtime_checkable
 class ApplicationHostPort(Protocol):
     async def stop(self, exit_code: int) -> None:
         """Stop NSApplication on its main thread after all other teardown."""

@@ -53,6 +53,26 @@ def perspective_geometry() -> BoardGeometry:
     )
 
 
+def test_aim_point_moves_towards_the_far_edge_and_stays_inside_the_square() -> None:
+    geometry = perspective_geometry()
+    square = ChessSquare.parse("E2")
+    corners = geometry.corners_of(square)
+
+    centre = geometry.aim_point(square)
+    shallow = geometry.aim_point(square, 0.34)
+
+    assert centre == geometry.center_of(square)
+    assert corners.top_left.y < shallow.y < centre.y < corners.bottom_left.y
+    assert corners.contains(shallow)
+    assert geometry.contains(shallow)
+
+
+@pytest.mark.parametrize("depth", [0.0, 1.0, -0.1, 1.5])
+def test_aim_point_rejects_a_depth_outside_the_square(depth: float) -> None:
+    with pytest.raises(ValueError, match="aim depth"):
+        perspective_geometry().aim_point(ChessSquare.parse("E2"), depth)
+
+
 def test_overlay_model_has_exact_perspective_grid_labels_and_highlights() -> None:
     geometry = perspective_geometry()
     source = ChessSquare.parse("A1")
@@ -161,7 +181,6 @@ class OverlayBackend:
         self.destroy_count += 1
 
 
-@pytest.mark.asyncio
 async def test_first_hud_update_constructs_backend_before_board_detection(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -181,13 +200,12 @@ async def test_first_hud_update_constructs_backend_before_board_detection(
     assert backend.shown == []
 
 
-@pytest.mark.asyncio
 async def test_unbound_detection_clears_board_without_hiding_hud() -> None:
     backend = OverlayBackend()
     overlay = BoardOverlay(backend)
     unbound = BoardDetection
-    unbound = BoardDetection(perspective_geometry(), 0.99, 0.99)
-    bound = BoardDetection(perspective_geometry(), 0.99, 0.99, source_window_id=17)
+    unbound = BoardDetection(perspective_geometry(), 0.99)
+    bound = BoardDetection(perspective_geometry(), 0.99, source_window_id=17)
 
     assert await overlay.show_stable(unbound) is False
     assert await overlay.show_stable(bound) is True
@@ -203,7 +221,6 @@ async def test_unbound_detection_clears_board_without_hiding_hud() -> None:
     assert overlay.visible_window_id is None
 
 
-@pytest.mark.asyncio
 async def test_overlay_does_not_report_visibility_when_presentation_fails() -> None:
     backend = OverlayBackend()
 
@@ -213,7 +230,7 @@ async def test_overlay_does_not_report_visibility_when_presentation_fails() -> N
 
     backend.show = fail_to_present
     overlay = BoardOverlay(backend)
-    detection = BoardDetection(perspective_geometry(), 0.99, 0.99, source_window_id=17)
+    detection = BoardDetection(perspective_geometry(), 0.99, source_window_id=17)
 
     assert await overlay.show_stable(detection) is False
 
@@ -414,7 +431,6 @@ def test_appkit_backend_keeps_hud_updates_isolated_from_board_model() -> None:
     assert panel.order_front_count == 1
 
 
-@pytest.mark.asyncio
 async def test_hud_updates_eagerly_reach_backend_and_board_clear_preserves_panel() -> (
     None
 ):
@@ -433,7 +449,7 @@ async def test_hud_updates_eagerly_reach_backend_and_board_clear_preserves_panel
 
     await overlay.update_hud(present_hud(state))
     await overlay.show_stable(
-        BoardDetection(perspective_geometry(), 0.99, 0.99, source_window_id=17)
+        BoardDetection(perspective_geometry(), 0.99, source_window_id=17)
     )
     await overlay.clear_board()
 
@@ -539,7 +555,6 @@ class AudioBackend:
         return 0.021
 
 
-@pytest.mark.asyncio
 async def test_audio_callback_handoff_produces_exact_pcm_frame() -> None:
     backend = AudioBackend()
     audio = AudioCaptureService(backend)
@@ -556,7 +571,6 @@ async def test_audio_callback_handoff_produces_exact_pcm_frame() -> None:
     assert backend.stopped
 
 
-@pytest.mark.asyncio
 async def test_audio_callback_drops_buffers_captured_while_transaction_busy() -> None:
     backend = AudioBackend()
     audio = AudioCaptureService(backend)
@@ -573,7 +587,6 @@ async def test_audio_callback_drops_buffers_captured_while_transaction_busy() ->
     assert frames == [b"\xff\x1f" * FRAMES_PER_CHUNK]
 
 
-@pytest.mark.asyncio
 async def test_audio_stop_fifo_flushes_resampler_and_even_pcm_tail_once() -> None:
     backend = VariableAudioBackend()
     audio = AudioCaptureService(backend)
@@ -603,7 +616,6 @@ async def test_audio_stop_fifo_flushes_resampler_and_even_pcm_tail_once() -> Non
     assert backend.stop_count == 1
 
 
-@pytest.mark.asyncio
 async def test_audio_reuse_rejects_post_stop_and_old_generation_callbacks() -> None:
     backend = VariableAudioBackend()
     audio = AudioCaptureService(backend)
@@ -632,7 +644,6 @@ async def test_audio_reuse_rejects_post_stop_and_old_generation_callbacks() -> N
     assert backend.stop_count == 2
 
 
-@pytest.mark.asyncio
 async def test_audio_drain_waits_for_in_flight_decode_and_terminal_consumption() -> (
     None
 ):
@@ -659,7 +670,6 @@ async def test_audio_drain_waits_for_in_flight_decode_and_terminal_consumption()
     assert backend.stop_count == 1
 
 
-@pytest.mark.asyncio
 async def test_audio_drain_preserves_stop_marker_for_waiting_iterator() -> None:
     backend = AudioBackend()
     audio = AudioCaptureService(backend)
@@ -676,7 +686,6 @@ async def test_audio_drain_preserves_stop_marker_for_waiting_iterator() -> None:
     assert backend.stopped
 
 
-@pytest.mark.asyncio
 async def test_audio_overrun_terminates_stream_with_explicit_error() -> None:
     backend = AudioBackend()
     audio = AudioCaptureService(backend, maximum_buffered_duration=0.08)
@@ -693,7 +702,7 @@ async def test_audio_overrun_terminates_stream_with_explicit_error() -> None:
     await audio.drain()
 
 
-def test_macos_package_import_does_not_import_pyobjc(monkeypatch) -> None:
+def test_macos_application_module_import_does_not_import_pyobjc(monkeypatch) -> None:
     native_names = {
         "AppKit",
         "ApplicationServices",
@@ -717,6 +726,6 @@ def test_macos_package_import_does_not_import_pyobjc(monkeypatch) -> None:
 
     monkeypatch.setattr(builtins, "__import__", guarded_import)
 
-    imported = importlib.import_module("voice_chess_cua.macos")
+    imported = importlib.import_module("voice_chess_cua.macos.application")
 
     assert imported.CHESS_BUNDLE_IDENTIFIER == "com.apple.Chess"

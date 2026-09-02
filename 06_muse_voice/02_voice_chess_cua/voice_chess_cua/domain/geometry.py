@@ -90,9 +90,6 @@ class Rect:
         )
 
 
-ScreenRect = Rect
-
-
 @dataclass(frozen=True, slots=True)
 class Quad:
     """A non-degenerate convex quadrilateral in boundary order."""
@@ -292,12 +289,27 @@ class BoardGeometry:
         return self.point(column / 8, row / 8)
 
     def center_of(self, square: ChessSquare) -> Point:
+        return self.aim_point(square)
+
+    def aim_point(self, square: ChessSquare, depth: float = 0.5) -> Point:
+        """The point `depth` of the way from the square's far edge to its near one.
+
+        Apple Chess draws pieces standing up, so a piece occupies part of the
+        square behind its own. A point short of the centre stays clear of that
+        overlap while remaining well inside the square.
+        """
+
+        if not 0 < depth < 1:
+            raise ValueError("aim depth must be between 0 and 1")
+        rows_behind = (
+            8 - square.rank
+            if self.orientation is BoardOrientation.WHITE_BOTTOM
+            else square.rank - 1
+        )
         unit_x = (square.file + 0.5) / 8
-        unit_y = (8 - square.rank + 0.5) / 8
         if self.orientation is BoardOrientation.BLACK_BOTTOM:
             unit_x = 1 - unit_x
-            unit_y = 1 - unit_y
-        return self.point(unit_x, unit_y)
+        return self.point(unit_x, (rows_behind + depth) / 8)
 
     def corners_of(self, square: ChessSquare) -> Quad:
         minimum_x = square.file / 8
@@ -322,15 +334,12 @@ class BoardGeometry:
 class BoardDetection:
     geometry: BoardGeometry
     confidence: float
-    proposal_score: float
     captured_at: datetime | float = field(default_factory=lambda: datetime.now(UTC))
     source_window_id: int | None = None
 
     def __post_init__(self) -> None:
         if not isfinite(self.confidence) or not 0 <= self.confidence <= 1:
             raise ValueError("confidence must be finite and within 0...1")
-        if not isfinite(self.proposal_score) or not 0 <= self.proposal_score <= 1:
-            raise ValueError("proposal score must be finite and within 0...1")
         if self.source_window_id is not None and (
             isinstance(self.source_window_id, bool)
             or not isinstance(self.source_window_id, int)

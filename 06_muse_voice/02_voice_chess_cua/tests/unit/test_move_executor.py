@@ -23,7 +23,6 @@ from voice_chess_cua.automation.move_executor import (
     MoveValidation,
     PartialMoveExecution,
     PostedEventKind,
-    PreparedCommand,
     PreparedMove,
 )
 from voice_chess_cua.domain.chess import ChessMove, ChessSquare
@@ -139,6 +138,48 @@ class BlockingSnapshotProbe(SnapshotProbe):
         return await super().game_snapshot(process_identifier)
 
 
+class SquareResolver:
+    """Resolves a point the way Accessibility hit testing does.
+
+    A point lands on the square that contains it, unless `covers` says a piece
+    hides that square from the given depth onwards, in which case the point
+    resolves to the square the piece stands on.
+    """
+
+    def __init__(
+        self,
+        *,
+        geometry: BoardGeometry | None = None,
+        covers: Mapping[str, tuple[str, float]] | None = None,
+        error: BaseException | None = None,
+    ) -> None:
+        self.geometry = geometry or detection().geometry
+        self.covers = dict(covers or {})
+        self.error = error
+        self.points: list[Point] = []
+
+    async def square_at_point(
+        self, process_identifier: int, point: Point
+    ) -> str | None:
+        del process_identifier
+        if self.error is not None:
+            raise self.error
+        self.points.append(point)
+        for square in ChessSquare.all():
+            corners = self.geometry.corners_of(square)
+            if not corners.contains(point):
+                continue
+            notation = square.notation.lower()
+            hidden = self.covers.get(notation)
+            if hidden is None:
+                return notation
+            covering, from_depth = hidden
+            back, front = corners.top_left.y, corners.bottom_left.y
+            depth = (point.y - back) / (front - back)
+            return covering if depth >= from_depth else notation
+        return None
+
+
 class Poster:
     def __init__(self, *, fail_on_call: int | None = None) -> None:
         self.points: list[Point] = []
@@ -197,6 +238,7 @@ class Fixture:
     move: ChessMove
     poster: Poster
     snapshot_probe: SnapshotProbe
+    square_resolver: SquareResolver
     events: list[Any]
     sleeps: list[float]
 
@@ -219,7 +261,6 @@ def detection(
             )
         ),
         confidence=confidence,
-        proposal_score=0.95,
         captured_at=captured_at,
         source_window_id=source_window_id,
     )
@@ -253,6 +294,7 @@ def make_fixture(
     poster: Poster | None = None,
     postcondition: Postcondition | None = None,
     snapshot_probe: SnapshotProbe | None = None,
+    square_resolver: SquareResolver | None = None,
     display_contains_board=lambda quad: True,
     sleep_error: BaseException | None = None,
     policy: MoveExecutorPolicy | None = None,
@@ -269,6 +311,7 @@ def make_fixture(
     poster = poster or Poster()
     postcondition = postcondition or Postcondition()
     snapshot_probe = snapshot_probe or SnapshotProbe()
+    square_resolver = square_resolver or SquareResolver()
     executor = ChessMoveExecutor(
         application_controller=application or Application(),
         window_locator=locator or Locator(),
@@ -277,6 +320,7 @@ def make_fixture(
         display_contains_board=display_contains_board,
         postcondition=postcondition,
         snapshot_probe=snapshot_probe,
+        square_resolver=square_resolver,
         policy=policy
         or MoveExecutorPolicy(
             minimum_board_confidence=0.85,
@@ -291,13 +335,13 @@ def make_fixture(
         reporter=events.append,
         sleep=sleep,
         clock=clock,
-        deadline_clock=clock,
     )
     return Fixture(
         executor=executor,
         move=ChessMove(ChessSquare.parse("E2"), ChessSquare.parse("E4")),
         poster=poster,
         snapshot_probe=snapshot_probe,
+        square_resolver=square_resolver,
         events=events,
         sleeps=sleeps,
     )
@@ -308,7 +352,6 @@ async def execute_move(fixture: Fixture):
     return await fixture.executor.execute_prepared(prepared)
 
 
-@pytest.mark.asyncio
 async def test_success_posts_source_then_waits_then_posts_destination() -> None:
     fixture = make_fixture()
 
@@ -330,6 +373,7 @@ async def test_success_posts_source_then_waits_then_posts_destination() -> None:
         MoveValidation.SQUARE_GEOMETRY,
         MoveValidation.POINTS_INSIDE_WINDOW,
         MoveValidation.BOARD_WITHIN_SINGLE_DISPLAY,
+        MoveValidation.CLICK_TARGETS_RESOLVED,
         MoveValidation.CHESS_FOCUSED_BEFORE_SOURCE,
         MoveValidation.WINDOW_REVALIDATED_BEFORE_SOURCE,
         MoveValidation.CHESS_FOCUSED_IMMEDIATELY_BEFORE_SOURCE,
@@ -341,7 +385,6 @@ async def test_success_posts_source_then_waits_then_posts_destination() -> None:
     ]
 
 
-@pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("fixture_overrides", "reason"),
     [
@@ -451,7 +494,6 @@ async def test_every_pre_source_failure_posts_zero_events(
     assert [event.posted_event for event in fixture.events if event.posted_event] == []
 
 
-@pytest.mark.asyncio
 @pytest.mark.parametrize("process_identifier", (0, -1, True))
 async def test_invalid_activation_pid_stops_before_window_snapshot_or_input(
     process_identifier: int,
@@ -475,7 +517,6 @@ async def test_invalid_activation_pid_stops_before_window_snapshot_or_input(
     assert fixture.poster.points == []
 
 
-@pytest.mark.asyncio
 async def test_postcondition_confirms_actual_board_state_change() -> None:
     postcondition = Postcondition()
     fixture = make_fixture(postcondition=postcondition)
@@ -490,7 +531,6 @@ async def test_postcondition_confirms_actual_board_state_change() -> None:
     ]
 
 
-@pytest.mark.asyncio
 async def test_unchanged_board_state_is_not_reported_as_success() -> None:
     postcondition = Postcondition(confirmed=False)
     fixture = make_fixture(postcondition=postcondition)
@@ -505,13 +545,12 @@ async def test_unchanged_board_state_is_not_reported_as_success() -> None:
     ]
 
 
-@pytest.mark.asyncio
 async def test_invalid_square_mapping_posts_zero_events() -> None:
     class InvalidGeometry:
         quad = Quad(Point(100, 100), Point(500, 100), Point(500, 500), Point(100, 500))
 
-        def center_of(self, square: ChessSquare) -> Point:
-            del square
+        def aim_point(self, square: ChessSquare, depth: float = 0.5) -> Point:
+            del square, depth
             raise ValueError("cannot map")
 
         def contains(self, point: Point) -> bool:
@@ -529,7 +568,68 @@ async def test_invalid_square_mapping_posts_zero_events() -> None:
     assert fixture.poster.points == []
 
 
-@pytest.mark.asyncio
+async def test_a_square_hidden_by_a_piece_is_clicked_behind_the_piece() -> None:
+    fixture = make_fixture(square_resolver=SquareResolver(covers={"e2": ("e1", 0.4)}))
+
+    result = await execute_move(fixture)
+
+    assert result.source_event.point == Point(325, 417)
+    assert fixture.poster.points == [Point(325, 417), Point(325, 325)]
+
+
+async def test_a_fully_hidden_square_posts_zero_events() -> None:
+    fixture = make_fixture(square_resolver=SquareResolver(covers={"e2": ("e1", 0.0)}))
+
+    with pytest.raises(MoveExecutionBlocked) as caught:
+        await execute_move(fixture)
+
+    assert caught.value.reason is MoveExecutionReason.SQUARE_NOT_CLICKABLE
+    assert fixture.poster.points == []
+
+
+async def test_a_point_owned_by_another_process_posts_zero_events() -> None:
+    class ForeignWindowResolver:
+        async def square_at_point(
+            self, process_identifier: int, point: Point
+        ) -> str | None:
+            del process_identifier, point
+            return None
+
+    fixture = make_fixture(square_resolver=ForeignWindowResolver())
+
+    with pytest.raises(MoveExecutionBlocked) as caught:
+        await execute_move(fixture)
+
+    assert caught.value.reason is MoveExecutionReason.SQUARE_NOT_CLICKABLE
+    assert fixture.poster.points == []
+
+
+async def test_an_unreadable_hit_test_posts_zero_events() -> None:
+    fixture = make_fixture(
+        square_resolver=SquareResolver(error=OSError("hit test failed"))
+    )
+
+    with pytest.raises(MoveExecutionBlocked) as caught:
+        await execute_move(fixture)
+
+    assert caught.value.reason is MoveExecutionReason.SQUARE_NOT_CLICKABLE
+    assert isinstance(caught.value.underlying_error, OSError)
+    assert fixture.poster.points == []
+
+
+async def test_a_square_that_becomes_hidden_after_preparation_withholds_input() -> None:
+    resolver = SquareResolver()
+    fixture = make_fixture(square_resolver=resolver)
+    prepared = await fixture.executor.prepare(fixture.move)
+    resolver.covers["e2"] = ("e1", 0.4)
+
+    with pytest.raises(MoveExecutionBlocked) as caught:
+        await fixture.executor.execute_prepared(prepared)
+
+    assert caught.value.reason is MoveExecutionReason.PREPARED_BASELINE_CHANGED
+    assert fixture.poster.points == []
+
+
 @pytest.mark.parametrize(
     ("fixture_overrides", "reason"),
     [
@@ -615,7 +715,6 @@ async def test_every_post_source_failure_is_typed_partial(
     ] == [PostedEventKind.SOURCE]
 
 
-@pytest.mark.asyncio
 async def test_cancellation_while_source_post_is_in_flight_waits_and_reports_partial() -> (
     None
 ):
@@ -635,7 +734,6 @@ async def test_cancellation_while_source_post_is_in_flight_waits_and_reports_par
     assert fixture.poster.points == [Point(325, 425)]
 
 
-@pytest.mark.asyncio
 async def test_cancellation_while_destination_post_is_in_flight_reports_completed_move() -> (
     None
 ):
@@ -654,7 +752,6 @@ async def test_cancellation_while_destination_post_is_in_flight_reports_complete
     assert fixture.poster.points == [Point(325, 425), Point(325, 325)]
 
 
-@pytest.mark.asyncio
 async def test_failing_reporter_cannot_change_input_control_flow() -> None:
     fixture = make_fixture()
 
@@ -669,7 +766,6 @@ async def test_failing_reporter_cannot_change_input_control_flow() -> None:
     assert fixture.poster.points == [Point(325, 425), Point(325, 325)]
 
 
-@pytest.mark.asyncio
 async def test_window_tolerance_is_inclusive() -> None:
     fixture = make_fixture(
         locator=Locator(
@@ -687,7 +783,6 @@ async def test_window_tolerance_is_inclusive() -> None:
     assert result.destination_event.point == Point(325, 325)
 
 
-@pytest.mark.asyncio
 async def test_executor_rejects_concurrent_input_instead_of_queueing_it() -> None:
     entered = asyncio.Event()
     release = asyncio.Event()
@@ -712,15 +807,13 @@ async def test_executor_rejects_concurrent_input_instead_of_queueing_it() -> Non
     assert fixture.poster.points == [Point(325, 425), Point(325, 325)]
 
 
-@pytest.mark.asyncio
-async def test_prepare_is_immutable_complete_and_posts_no_input() -> None:
+async def test_prepare_omits_before_state_from_repr_and_posts_no_input() -> None:
     postcondition = Postcondition()
     fixture = make_fixture(postcondition=postcondition)
 
-    prepared = await fixture.executor.prepare(fixture.move, expires_at=1_001)
+    prepared = await fixture.executor.prepare(fixture.move)
 
     assert isinstance(prepared, PreparedMove)
-    assert isinstance(prepared, PreparedCommand)
     assert prepared.process_identifier == 10
     assert prepared.window_id == 42
     assert prepared.window_frame == Rect(0, 0, 600, 600)
@@ -732,15 +825,13 @@ async def test_prepare_is_immutable_complete_and_posts_no_input() -> None:
         PieceKind.PAWN,
     )
     assert prepared.tracking_generation == 1
-    assert prepared.expires_at == 1_001
     assert fixture.poster.points == []
     assert postcondition.captures == [(10, fixture.move)]
-    assert not hasattr(prepared, "before_state")
+    assert "_before_state" not in repr(prepared)
     with pytest.raises(FrozenInstanceError):
         prepared.ax_title = "changed"  # type: ignore[misc]
 
 
-@pytest.mark.asyncio
 async def test_execute_prepared_preserves_click_and_postcondition_semantics() -> None:
     postcondition = Postcondition()
     fixture = make_fixture(postcondition=postcondition)
@@ -752,67 +843,135 @@ async def test_execute_prepared_preserves_click_and_postcondition_semantics() ->
     assert fixture.poster.points == [Point(325, 425), Point(325, 325)]
     assert postcondition.waits == [(10, fixture.move, postcondition.before)]
 
+
+async def test_new_prepare_replaces_previous_pending_capability() -> None:
+    fixture = make_fixture()
+    first = await fixture.executor.prepare(fixture.move)
+    second_move = ChessMove(ChessSquare.parse("D2"), ChessSquare.parse("D4"))
+    second = await fixture.executor.prepare(second_move)
+
+    with pytest.raises(MoveExecutionBlocked) as caught:
+        await fixture.executor.execute_prepared(first)
+
+    assert caught.value.reason is MoveExecutionReason.INVALID_PREPARED_MOVE
+    assert fixture.poster.points == []
+
+    result = await fixture.executor.execute_prepared(second)
+
+    assert result.move == second_move
+    assert fixture.poster.points == [Point(275, 425), Point(275, 325)]
+
+
+async def test_busy_rejection_preserves_pending_capability() -> None:
+    snapshot_probe = BlockingSnapshotProbe()
+    fixture = make_fixture(snapshot_probe=snapshot_probe)
+    prepared = await fixture.executor.prepare(fixture.move)
+    next_prepare = asyncio.create_task(fixture.executor.prepare(fixture.move))
+    await snapshot_probe.entered.wait()
+
     with pytest.raises(MoveExecutionBlocked) as caught:
         await fixture.executor.execute_prepared(prepared)
+
+    assert caught.value.reason is MoveExecutionReason.ALREADY_EXECUTING
+    assert fixture.poster.points == []
+
+    next_prepare.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await next_prepare
+
+    result = await fixture.executor.execute_prepared(prepared)
+
+    assert result.move == fixture.move
+    assert fixture.poster.points == [Point(325, 425), Point(325, 325)]
+
+
+async def test_non_prepared_move_is_rejected_before_input() -> None:
+    fixture = make_fixture()
+
+    with pytest.raises(MoveExecutionBlocked) as caught:
+        await fixture.executor.execute_prepared(object())  # type: ignore[arg-type]
+
+    assert caught.value.reason is MoveExecutionReason.INVALID_PREPARED_MOVE
+    assert fixture.poster.points == []
+
+
+async def test_completed_prepared_move_cannot_be_replayed() -> None:
+    fixture = make_fixture()
+    prepared = await fixture.executor.prepare(fixture.move)
+
+    result = await fixture.executor.execute_prepared(prepared)
+    assert result.move == fixture.move
+
+    with pytest.raises(MoveExecutionBlocked) as caught:
+        await fixture.executor.execute_prepared(prepared)
+
     assert caught.value.reason is MoveExecutionReason.INVALID_PREPARED_MOVE
     assert fixture.poster.points == [Point(325, 425), Point(325, 325)]
 
 
-@pytest.mark.asyncio
-async def test_tampered_prepared_move_is_rejected_and_burns_capability() -> None:
-    fixture = make_fixture()
-    prepared = await fixture.executor.prepare(fixture.move)
-    tampered = replace(
-        prepared, ax_title="Game 2 | Sample Player - Computer (White to Move)"
-    )
-
-    with pytest.raises(MoveExecutionBlocked) as caught:
-        await fixture.executor.execute_prepared(tampered)
-    assert caught.value.reason is MoveExecutionReason.INVALID_PREPARED_MOVE
-
-    with pytest.raises(MoveExecutionBlocked) as reused:
-        await fixture.executor.execute_prepared(prepared)
-    assert reused.value.reason is MoveExecutionReason.INVALID_PREPARED_MOVE
-    assert fixture.poster.points == []
-
-
-@pytest.mark.asyncio
-async def test_foreign_executor_rejects_prepared_move_without_consuming_owner_copy() -> (
+async def test_forged_none_owner_token_is_rejected_after_pending_token_is_consumed() -> (
     None
 ):
+    fixture = make_fixture()
+    prepared = await fixture.executor.prepare(fixture.move)
+
+    result = await fixture.executor.execute_prepared(prepared)
+    assert result.move == fixture.move
+    click_count = len(fixture.poster.points)
+
+    forged = replace(prepared, _owner_token=None)
+    with pytest.raises(MoveExecutionBlocked) as caught:
+        await fixture.executor.execute_prepared(forged)
+
+    assert caught.value.reason is MoveExecutionReason.INVALID_PREPARED_MOVE
+    assert len(fixture.poster.points) == click_count
+
+
+async def test_unconfirmed_prepared_move_cannot_be_replayed() -> None:
+    fixture = make_fixture(postcondition=Postcondition(confirmed=False))
+    prepared = await fixture.executor.prepare(fixture.move)
+
+    with pytest.raises(MoveExecutionUnconfirmed):
+        await fixture.executor.execute_prepared(prepared)
+
+    with pytest.raises(MoveExecutionBlocked) as caught:
+        await fixture.executor.execute_prepared(prepared)
+
+    assert caught.value.reason is MoveExecutionReason.INVALID_PREPARED_MOVE
+    assert fixture.poster.points == [Point(325, 425), Point(325, 325)]
+
+
+async def test_foreign_executor_rejects_prepared_move_before_input() -> None:
     owner = make_fixture()
     foreign = make_fixture()
     prepared = await owner.executor.prepare(owner.move)
 
     with pytest.raises(MoveExecutionBlocked) as caught:
         await foreign.executor.execute_prepared(prepared)
+
     assert caught.value.reason is MoveExecutionReason.INVALID_PREPARED_MOVE
     assert foreign.poster.points == []
 
-    await owner.executor.execute_prepared(prepared)
-    assert owner.poster.points == [Point(325, 425), Point(325, 325)]
 
-
-@pytest.mark.asyncio
-async def test_expired_prepared_move_is_consumed_before_any_await_or_input() -> None:
-    now = [1_000.0]
-    fixture = make_fixture(clock=lambda: now[0])
-    prepared = await fixture.executor.prepare(fixture.move, expires_at=1_001)
-    snapshot_calls = len(fixture.snapshot_probe.process_identifiers)
-    now[0] = 1_001
+async def test_concurrent_execute_prepared_consumes_capability_once() -> None:
+    snapshot_probe = BlockingSnapshotProbe()
+    fixture = make_fixture(snapshot_probe=snapshot_probe)
+    prepared = await fixture.executor.prepare(fixture.move)
+    first = asyncio.create_task(fixture.executor.execute_prepared(prepared))
+    await snapshot_probe.entered.wait()
 
     with pytest.raises(MoveExecutionBlocked) as caught:
         await fixture.executor.execute_prepared(prepared)
-    assert caught.value.reason is MoveExecutionReason.PREPARED_MOVE_EXPIRED
-    assert len(fixture.snapshot_probe.process_identifiers) == snapshot_calls
+
+    assert caught.value.reason is MoveExecutionReason.INVALID_PREPARED_MOVE
     assert fixture.poster.points == []
 
-    with pytest.raises(MoveExecutionBlocked) as reused:
-        await fixture.executor.execute_prepared(prepared)
-    assert reused.value.reason is MoveExecutionReason.INVALID_PREPARED_MOVE
+    snapshot_probe.release.set()
+    result = await first
+    assert result.destination_event.kind is PostedEventKind.DESTINATION
+    assert fixture.poster.points == [Point(325, 425), Point(325, 325)]
 
 
-@pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("fixture_overrides", "reason"),
     [
@@ -930,7 +1089,6 @@ async def test_prepared_baseline_mismatches_post_zero_events(
     assert [event.posted_event for event in fixture.events if event.posted_event] == []
 
 
-@pytest.mark.asyncio
 async def test_focus_loss_during_snapshot_recapture_posts_zero_events() -> None:
     snapshot_probe = BlockingSnapshotProbe()
     fixture = make_fixture(
@@ -951,7 +1109,6 @@ async def test_focus_loss_during_snapshot_recapture_posts_zero_events() -> None:
     assert fixture.poster.points == []
 
 
-@pytest.mark.asyncio
 async def test_detection_that_ages_during_snapshot_recapture_posts_zero_events() -> (
     None
 ):
@@ -969,41 +1126,3 @@ async def test_detection_that_ages_during_snapshot_recapture_posts_zero_events()
         await execution
     assert caught.value.reason is MoveExecutionReason.BOARD_NOT_READY
     assert fixture.poster.points == []
-
-
-@pytest.mark.asyncio
-async def test_expiry_during_snapshot_recapture_posts_zero_events() -> None:
-    now = [1_000.0]
-    snapshot_probe = BlockingSnapshotProbe()
-    fixture = make_fixture(snapshot_probe=snapshot_probe, clock=lambda: now[0])
-    prepared = await fixture.executor.prepare(fixture.move, expires_at=1_001)
-    execution = asyncio.create_task(fixture.executor.execute_prepared(prepared))
-    await snapshot_probe.entered.wait()
-
-    now[0] = 1_001
-    snapshot_probe.release.set()
-
-    with pytest.raises(MoveExecutionBlocked) as caught:
-        await execution
-    assert caught.value.reason is MoveExecutionReason.PREPARED_MOVE_EXPIRED
-    assert fixture.poster.points == []
-
-
-@pytest.mark.asyncio
-async def test_concurrent_execute_prepared_consumes_capability_once() -> None:
-    snapshot_probe = BlockingSnapshotProbe()
-    fixture = make_fixture(snapshot_probe=snapshot_probe)
-    prepared = await fixture.executor.prepare(fixture.move)
-    first = asyncio.create_task(fixture.executor.execute_prepared(prepared))
-    await snapshot_probe.entered.wait()
-
-    second = asyncio.create_task(fixture.executor.execute_prepared(prepared))
-    with pytest.raises(MoveExecutionBlocked) as caught:
-        await second
-    assert caught.value.reason is MoveExecutionReason.INVALID_PREPARED_MOVE
-    assert fixture.poster.points == []
-
-    snapshot_probe.release.set()
-    result = await first
-    assert result.destination_event.kind is PostedEventKind.DESTINATION
-    assert fixture.poster.points == [Point(325, 425), Point(325, 325)]

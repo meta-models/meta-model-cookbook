@@ -27,11 +27,6 @@ class HostedRuntime(Protocol):
 
 
 @runtime_checkable
-class EventLoopBindable(Protocol):
-    def bind_event_loop(self, loop: asyncio.AbstractEventLoop) -> None: ...
-
-
-@runtime_checkable
 class MainThreadWorkerWaiter(Protocol):
     def wait_for_worker(self, worker: threading.Thread, timeout: float) -> None: ...
 
@@ -138,8 +133,6 @@ class AppKitRuntimeProcess:
     def _run_worker(self, state: _WorkerState, ready: threading.Event) -> None:
         async def run_runtime() -> int:
             state.loop = asyncio.get_running_loop()
-            if isinstance(self._runtime, EventLoopBindable):
-                self._runtime.bind_event_loop(state.loop)
             ready.set()
             try:
                 return await self._runtime.run_until_stopped()

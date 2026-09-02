@@ -12,10 +12,9 @@ from datetime import UTC, datetime
 import pytest
 
 from voice_chess_cua.cli import CLICommand, CLIInvocation, CommandName
-from voice_chess_cua.domain.chess import ChessSquare
-from voice_chess_cua.domain.geometry import BoardGeometry, PixelSize, Point, Quad, Rect
+from voice_chess_cua.domain.chess import BoardOrientation, ChessSquare
+from voice_chess_cua.domain.geometry import BoardGeometry, Point, Rect
 from voice_chess_cua.macos.application import ChessApplicationStatus
-from voice_chess_cua.macos.capture import WindowScreenshot
 from voice_chess_cua.macos.permissions import PermissionGrant, PermissionSnapshot
 from voice_chess_cua.macos.windows import ChessWindowDescriptor
 from voice_chess_cua.runtime.ports import RuntimeCredentials
@@ -23,11 +22,31 @@ from voice_chess_cua.runtime.services import (
     EnvironmentRuntimeCredentialProvider,
     FixedCalibrationDetector,
     VoiceCUACommandServices,
-    _reconcile_accessibility_geometry,
     _request_permissions,
 )
+from voice_chess_cua.vision.calibration import AppleChessBoardCalibration
+from voice_chess_cua.vision.tracking import BoardDetectionError
 
-_CALIBRATED_WINDOW_FRAME = Rect(100, 200, 979, 768)
+_REFERENCE_FRAME = Rect(100, 200, 979, 768)
+_DETECTED_AT = datetime(2026, 8, 23, tzinfo=UTC)
+
+# Frames and landmarks captured together from two live Apple Chess windows.
+# Apple Chess reports landmark positions with the vertical axis inverted, so
+# these only agree with the calibrated quad on the distances between landmarks.
+_LIVE_FRAME = Rect(8.0, 446.0, 852.0, 671.0)
+_LIVE_LANDMARKS = {
+    "a8": Point(259.3598403930664, 948.742790222168),
+    "h8": Point(608.6401062011719, 948.7428359985352),
+    "a1": Point(222.91900634765625, 614.0659027099609),
+    "h1": Point(645.0810241699219, 614.0659790039062),
+}
+_WIDE_LIVE_FRAME = Rect(8.0, 142.0, 1257.0, 975.0)
+_WIDE_LIVE_LANDMARKS = {
+    "a8": Point(378.64, 868.81),
+    "h8": Point(894.35, 868.81),
+    "a1": Point(324.85, 374.67),
+    "h1": Point(948.16, 374.67),
+}
 
 
 class ProcessFake:
@@ -52,15 +71,29 @@ class PermissionControllerFake:
 class LandmarkProbeFake:
     def __init__(self, centers: dict[str, Point]) -> None:
         self.centers = centers
+        self.process_identifiers: list[int] = []
 
     async def square_centers(self, process_identifier: int) -> dict[str, Point]:
-        assert process_identifier == 42
+        self.process_identifiers.append(process_identifier)
         return self.centers
 
 
 class ChessFake:
+    def __init__(
+        self,
+        *,
+        bound_process_identifier: int | None = 42,
+        status: ChessApplicationStatus | None = None,
+    ) -> None:
+        self._bound_process_identifier = bound_process_identifier
+        self._status = status or ChessApplicationStatus(True, True, 42)
+
+    @property
+    def bound_process_identifier(self) -> int | None:
+        return self._bound_process_identifier
+
     async def status(self) -> ChessApplicationStatus:
-        return ChessApplicationStatus(True, False, 42)
+        return self._status
 
 
 class Locator:
@@ -74,62 +107,51 @@ class Locator:
         return self._window
 
 
-class Provider:
-    def __init__(self, screenshot: WindowScreenshot) -> None:
-        self._screenshot = screenshot
-
-    async def capture(self, window_id: int) -> WindowScreenshot:
-        assert window_id == self._screenshot.window.window_id
-        return self._screenshot
-
-
-def make_screenshot(
-    *, title: str = "Chess", frame: Rect = _CALIBRATED_WINDOW_FRAME
-) -> WindowScreenshot:
-    window = ChessWindowDescriptor(
+def make_window(
+    *,
+    title: str = "Chess",
+    frame: Rect = _REFERENCE_FRAME,
+    process_id: int = 42,
+) -> ChessWindowDescriptor:
+    return ChessWindowDescriptor(
         window_id=77,
         frame=frame,
         title=title,
         application_name="Chess",
-        process_id=42,
-        is_frontmost=True,
-        display_ids=(1,),
+        process_id=process_id,
     )
-    return WindowScreenshot(
-        image=object(),
-        window=window,
-        image_size=PixelSize(round(frame.width), round(frame.height)),
-        point_pixel_scale_x=1.0,
-        point_pixel_scale_y=1.0,
-        captured_at=datetime(2026, 8, 23, tzinfo=UTC),
+
+
+def landmarks(frame: Rect = _REFERENCE_FRAME) -> dict[str, Point]:
+    """Landmarks whose horizontal spread agrees with the calibrated quad."""
+
+    geometry = BoardGeometry(
+        AppleChessBoardCalibration.current.window_quad(frame),
+        BoardOrientation.WHITE_BOTTOM,
     )
+    return {
+        square: geometry.center_of(ChessSquare.parse(square.upper()))
+        for square in ("a1", "h1", "a8", "h8")
+    }
 
 
 def make_detector(
-    screenshot: WindowScreenshot,
+    centers: dict[str, Point] | None = None,
     *,
-    white_bottom: bool = True,
-    matching_layout: bool = True,
-) -> FixedCalibrationDetector:
-    async def orientation_checker(_image: object, _quad: object) -> bool:
-        return white_bottom
-
-    async def layout_checker(
-        process_identifier: int,
-        geometry: object,
-        window_frame: Rect,
-    ) -> object | None:
-        assert process_identifier == 42
-        assert window_frame == screenshot.window.frame
-        return geometry if matching_layout else None
-
-    return FixedCalibrationDetector(
-        ChessFake(),  # type: ignore[arg-type]
-        Locator(screenshot.window),  # type: ignore[arg-type]
-        Provider(screenshot),  # type: ignore[arg-type]
-        orientation_checker=orientation_checker,  # type: ignore[arg-type]
-        layout_checker=layout_checker,  # type: ignore[arg-type]
+    window: ChessWindowDescriptor | None = None,
+    chess: ChessFake | None = None,
+) -> tuple[FixedCalibrationDetector, LandmarkProbeFake]:
+    window = window or make_window()
+    probe = LandmarkProbeFake(
+        centers if centers is not None else landmarks(window.frame)
     )
+    detector = FixedCalibrationDetector(
+        chess or ChessFake(),  # type: ignore[arg-type]
+        Locator(window),  # type: ignore[arg-type]
+        probe,  # type: ignore[arg-type]
+        clock=lambda: _DETECTED_AT,
+    )
+    return detector, probe
 
 
 def test_command_services_forward_dry_run_to_process_factory() -> None:
@@ -205,185 +227,157 @@ def test_runtime_credentials_require_nonempty_model_api_key(
         asyncio.run(EnvironmentRuntimeCredentialProvider().load_runtime_credentials())
 
 
-def test_fixed_detector_maps_979_by_768_calibration_to_global_window() -> None:
-    detection = asyncio.run(make_detector(make_screenshot()).detect())
+def test_detector_places_calibrated_quad_in_the_reference_window() -> None:
+    detector, probe = make_detector()
+
+    detection = asyncio.run(detector.detect())
 
     assert detection.confidence == 0.99
-    assert detection.proposal_score == 1.0
+    assert detection.captured_at == _DETECTED_AT
     assert detection.source_window_id == 77
     assert detection.geometry.quad.top_left == Point(363.0, 398.0)
+    assert detection.geometry.quad.bottom_left == Point(301.0, 850.0)
+    assert probe.process_identifiers == [42]
 
 
-def test_fixed_detector_rejects_black_at_bottom_orientation() -> None:
-    detector = make_detector(make_screenshot(), white_bottom=False)
+def test_detector_keeps_the_board_narrower_at_the_back() -> None:
+    detector, _ = make_detector()
 
-    with pytest.raises(Exception, match="unsupported_orientation"):
-        asyncio.run(detector.detect())
+    quad = asyncio.run(detector.detect()).geometry.quad
+    back_width = quad.top_right.x - quad.top_left.x
+    front_width = quad.bottom_right.x - quad.bottom_left.x
 
-
-def test_fixed_detector_rejects_layout_without_matching_ax_landmarks() -> None:
-    detector = make_detector(make_screenshot(), matching_layout=False)
-
-    with pytest.raises(Exception, match="layout_mismatch"):
-        asyncio.run(detector.detect())
-
-
-def _corner_centers(geometry: BoardGeometry) -> dict[str, Point]:
-    return {
-        square: geometry.center_of(ChessSquare.parse(square.upper()))
-        for square in ("a1", "h1", "a8", "h8")
-    }
-
-
-def test_ax_layout_reconstructs_projective_geometry_from_landmarks() -> None:
-    proposal = asyncio.run(make_detector(make_screenshot()).detect()).geometry
-    expected = BoardGeometry(
-        Quad(
-            Point(350.0, 385.0),
-            Point(825.0, 380.0),
-            Point(890.0, 855.0),
-            Point(290.0, 860.0),
-        )
-    )
-    centers = _corner_centers(expected)
-
-    corrected = asyncio.run(
-        _reconcile_accessibility_geometry(
-            LandmarkProbeFake(centers),  # type: ignore[arg-type]
-            42,
-            proposal,
-            Rect(100.0, 200.0, 979.0, 768.0),
-        )
-    )
-
-    assert corrected is not None
-    assert corrected != proposal
-    for square, center in centers.items():
-        actual = corrected.center_of(ChessSquare.parse(square.upper()))
-        assert actual.x == pytest.approx(center.x)
-        assert actual.y == pytest.approx(center.y)
-    for actual, wanted in zip(corrected.quad.points, expected.quad.points, strict=True):
-        assert actual.x == pytest.approx(wanted.x)
-        assert actual.y == pytest.approx(wanted.y)
-
-
-def test_ax_layout_corrects_uniform_translation_and_scale() -> None:
-    proposal = asyncio.run(make_detector(make_screenshot()).detect()).geometry
-    center = proposal.quad.center
-    expected = BoardGeometry(
-        Quad(
-            *(
-                Point(
-                    center.x + (point.x - center.x) * 1.04 + 8.0,
-                    center.y + (point.y - center.y) * 1.04 + 6.0,
-                )
-                for point in proposal.quad.points
-            )
-        )
-    )
-    centers = _corner_centers(expected)
-
-    corrected = asyncio.run(
-        _reconcile_accessibility_geometry(
-            LandmarkProbeFake(centers),  # type: ignore[arg-type]
-            42,
-            proposal,
-            _CALIBRATED_WINDOW_FRAME,
-        )
-    )
-
-    assert corrected is not None
-    assert corrected.quad.maximum_corner_distance_to(expected.quad) == pytest.approx(
-        0.0, abs=1e-9
-    )
-
-
-def test_ax_layout_rejects_incomplete_landmarks() -> None:
-    geometry = asyncio.run(make_detector(make_screenshot()).detect()).geometry
-    centers = _corner_centers(geometry)
-    del centers["h1"]
-
-    assert (
-        asyncio.run(
-            _reconcile_accessibility_geometry(
-                LandmarkProbeFake(centers),  # type: ignore[arg-type]
-                42,
-                geometry,
-                _CALIBRATED_WINDOW_FRAME,
-            )
-        )
-        is None
-    )
-
-
-def test_ax_layout_rejects_singular_landmarks() -> None:
-    geometry = asyncio.run(make_detector(make_screenshot()).detect()).geometry
-    centers = {
-        "a8": Point(300.0, 300.0),
-        "h8": Point(400.0, 300.0),
-        "h1": Point(500.0, 300.0),
-        "a1": Point(600.0, 300.0),
-    }
-
-    assert (
-        asyncio.run(
-            _reconcile_accessibility_geometry(
-                LandmarkProbeFake(centers),  # type: ignore[arg-type]
-                42,
-                geometry,
-                _CALIBRATED_WINDOW_FRAME,
-            )
-        )
-        is None
-    )
-
-
-def test_ax_layout_rejects_geometry_outside_chess_window() -> None:
-    proposal = asyncio.run(make_detector(make_screenshot()).detect()).geometry
-    outside = BoardGeometry(
-        Quad(*(Point(point.x - 300.0, point.y) for point in proposal.quad.points))
-    )
-
-    assert (
-        asyncio.run(
-            _reconcile_accessibility_geometry(
-                LandmarkProbeFake(_corner_centers(outside)),  # type: ignore[arg-type]
-                42,
-                proposal,
-                _CALIBRATED_WINDOW_FRAME,
-            )
-        )
-        is None
-    )
+    assert back_width == pytest.approx(451.0)
+    assert front_width == pytest.approx(576.0)
 
 
 @pytest.mark.parametrize(
-    "changed_square",
-    ("a1", "h1", "a8", "h8"),
+    ("frame", "centers"),
+    (
+        (_LIVE_FRAME, _LIVE_LANDMARKS),
+        (_WIDE_LIVE_FRAME, _WIDE_LIVE_LANDMARKS),
+    ),
 )
-def test_ax_layout_rejects_dimension_mismatch(changed_square: str) -> None:
-    geometry = asyncio.run(make_detector(make_screenshot()).detect()).geometry
-    centers = _corner_centers(geometry)
-    center = centers[changed_square]
-    centers[changed_square] = Point(center.x + 100.0, center.y)
+def test_detector_agrees_with_landmarks_measured_on_live_windows(
+    frame: Rect,
+    centers: dict[str, Point],
+) -> None:
+    detector, _ = make_detector(centers, window=make_window(frame=frame))
 
-    assert (
-        asyncio.run(
-            _reconcile_accessibility_geometry(
-                LandmarkProbeFake(centers),  # type: ignore[arg-type]
-                42,
-                geometry,
-                _CALIBRATED_WINDOW_FRAME,
-            )
+    geometry = asyncio.run(detector.detect()).geometry
+
+    for start, end in (("a1", "h1"), ("a8", "h8"), ("a1", "a8"), ("h1", "h8")):
+        calibrated = geometry.center_of(ChessSquare.parse(start.upper())).distance_to(
+            geometry.center_of(ChessSquare.parse(end.upper()))
         )
-        is None
+        measured = centers[start].distance_to(centers[end])
+        assert calibrated == pytest.approx(measured, rel=0.04)
+
+
+def test_detector_scales_the_board_with_the_window() -> None:
+    detector, _ = make_detector(
+        _LIVE_LANDMARKS,
+        window=make_window(frame=_LIVE_FRAME),
     )
 
+    quad = asyncio.run(detector.detect()).geometry.quad
 
-def test_fixed_detector_rejects_auto_rotating_human_game() -> None:
-    screenshot = make_screenshot(
-        title="Game 2 | Voice CUA - Auto-Match Player (White to Move)"
+    assert quad.top_left.y == pytest.approx(619.0, abs=0.5)
+    assert quad.bottom_left.y == pytest.approx(1013.9, abs=0.5)
+    assert quad.top_left.x == pytest.approx(236.9, abs=0.5)
+    assert quad.bottom_right.x == pytest.approx(684.2, abs=0.5)
+
+
+def test_detector_accepts_landmarks_whose_ranks_are_reported_mirrored() -> None:
+    """Apple Chess reports square frames on the vertically reflected rank."""
+
+    centers = landmarks(_REFERENCE_FRAME)
+    axis = sum(center.y for center in centers.values()) / 4
+    mirrored = {
+        square: Point(center.x, 2.0 * axis - center.y)
+        for square, center in centers.items()
+    }
+    detector, _ = make_detector(mirrored)
+
+    assert asyncio.run(detector.detect()).geometry.quad.top_left == Point(363.0, 398.0)
+
+
+def test_detector_rejects_black_at_bottom_landmarks() -> None:
+    centers = landmarks(_REFERENCE_FRAME)
+    flipped = {
+        "a1": Point(centers["a8"].x, centers["a1"].y),
+        "h1": Point(centers["h8"].x, centers["h1"].y),
+        "a8": Point(centers["a1"].x, centers["a8"].y),
+        "h8": Point(centers["h1"].x, centers["h8"].y),
+    }
+    detector, _ = make_detector(flipped)
+
+    with pytest.raises(BoardDetectionError, match="unsupported_orientation"):
+        asyncio.run(detector.detect())
+
+
+def test_detector_rejects_landmarks_wider_than_the_calibrated_quad() -> None:
+    centers = landmarks(_REFERENCE_FRAME)
+    centers["h1"] = Point(centers["h1"].x + 60.0, centers["h1"].y)
+    detector, _ = make_detector(centers)
+
+    with pytest.raises(BoardDetectionError, match="layout_mismatch"):
+        asyncio.run(detector.detect())
+
+
+def test_detector_rejects_incomplete_landmarks() -> None:
+    centers = landmarks(_REFERENCE_FRAME)
+    del centers["h8"]
+    detector, _ = make_detector(centers)
+
+    with pytest.raises(BoardDetectionError, match="layout_mismatch"):
+        asyncio.run(detector.detect())
+
+
+def test_detector_rejects_landmarks_outside_the_chess_window() -> None:
+    centers = {
+        square: Point(center.x - 400.0, center.y)
+        for square, center in landmarks(_REFERENCE_FRAME).items()
+    }
+    detector, _ = make_detector(centers)
+
+    with pytest.raises(BoardDetectionError, match="layout_mismatch"):
+        asyncio.run(detector.detect())
+
+
+def test_detector_rejects_windows_outside_the_calibrated_aspect_ratio() -> None:
+    detector, _ = make_detector(
+        landmarks(_REFERENCE_FRAME),
+        window=make_window(frame=Rect(100, 200, 979, 600)),
     )
 
-    with pytest.raises(Exception, match="layout_mismatch"):
-        asyncio.run(make_detector(screenshot).detect())
+    with pytest.raises(BoardDetectionError, match="unsupported_aspect"):
+        asyncio.run(detector.detect())
+
+
+def test_detector_rejects_auto_rotating_human_game() -> None:
+    detector, _ = make_detector(
+        window=make_window(title="Game 2 | Auto-Match Player (White to Move)")
+    )
+
+    with pytest.raises(BoardDetectionError, match="layout_mismatch"):
+        asyncio.run(detector.detect())
+
+
+def test_detector_rejects_current_pid_different_from_bound_pid() -> None:
+    detector, _ = make_detector(
+        chess=ChessFake(
+            bound_process_identifier=42,
+            status=ChessApplicationStatus(True, True, 43),
+        )
+    )
+
+    with pytest.raises(BoardDetectionError, match="window_unavailable"):
+        asyncio.run(detector.detect())
+
+
+def test_detector_requires_a_bound_process_identifier() -> None:
+    detector, _ = make_detector(chess=ChessFake(bound_process_identifier=None))
+
+    with pytest.raises(BoardDetectionError, match="window_unavailable"):
+        asyncio.run(detector.detect())

@@ -13,9 +13,7 @@ import time
 from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass, field
 from enum import StrEnum
-from math import isfinite
-from typing import Protocol, TypeVar, runtime_checkable
-from weakref import WeakKeyDictionary
+from typing import Protocol
 
 from voice_chess_cua.domain.chess import ChessMove, ChessSquare
 from voice_chess_cua.domain.game_state import ChessGameState
@@ -39,6 +37,7 @@ class MoveValidation(StrEnum):
     BOARD_MATCHES_WINDOW = "boardMatchesWindow"
     SQUARE_GEOMETRY = "squareGeometry"
     POINTS_INSIDE_WINDOW = "pointsInsideWindow"
+    CLICK_TARGETS_RESOLVED = "clickTargetsResolved"
     BOARD_WITHIN_SINGLE_DISPLAY = "boardWithinSingleDisplay"
     CHESS_FOCUSED_BEFORE_SOURCE = "chessFocusedBeforeSource"
     WINDOW_REVALIDATED_BEFORE_SOURCE = "windowRevalidatedBeforeSource"
@@ -90,6 +89,7 @@ class MoveExecutionReason(StrEnum):
     WRONG_WINDOW = "wrongWindow"
     INVALID_SQUARE_GEOMETRY = "invalidSquareGeometry"
     POINT_OUTSIDE_WINDOW = "pointOutsideWindow"
+    SQUARE_NOT_CLICKABLE = "squareNotClickable"
     BOARD_SPANS_DISPLAYS = "boardSpansDisplays"
     WINDOW_CHANGED_BEFORE_SOURCE = "windowChangedBeforeSource"
     EVENT_POST_FAILED = "eventPostFailed"
@@ -100,7 +100,6 @@ class MoveExecutionReason(StrEnum):
     ALREADY_EXECUTING = "alreadyExecuting"
     MOVE_NOT_CONFIRMED = "moveNotConfirmed"
     INVALID_PREPARED_MOVE = "invalidPreparedMove"
-    PREPARED_MOVE_EXPIRED = "preparedMoveExpired"
     PREPARED_BASELINE_CHANGED = "preparedBaselineChanged"
 
 
@@ -128,6 +127,9 @@ _REASON_MESSAGES = {
     MoveExecutionReason.POINT_OUTSIDE_WINDOW: (
         "A mapped square falls outside the current Chess window."
     ),
+    MoveExecutionReason.SQUARE_NOT_CLICKABLE: (
+        "A square is covered by a piece or another window and cannot be clicked safely."
+    ),
     MoveExecutionReason.BOARD_SPANS_DISPLAYS: (
         "The detected board spans multiple displays and cannot be clicked safely."
     ),
@@ -150,7 +152,6 @@ _REASON_MESSAGES = {
     MoveExecutionReason.INVALID_PREPARED_MOVE: (
         "The prepared Chess move is invalid, foreign, or already consumed."
     ),
-    MoveExecutionReason.PREPARED_MOVE_EXPIRED: "The prepared Chess move has expired.",
     MoveExecutionReason.PREPARED_BASELINE_CHANGED: (
         "The prepared Chess state changed before input; no input was posted."
     ),
@@ -236,6 +237,11 @@ class MoveExecutorPolicy:
     click_delay: float = 0.15
     activation_timeout: float = 3.0
     window_tolerance: float = 1.0
+    # Where to aim inside a square, as a fraction of its depth measured from
+    # the far edge. A piece standing on the rank in front covers the near part
+    # of the square, so the centre is not always clickable; the first depth
+    # that Accessibility resolves to the intended square wins.
+    aim_depths: tuple[float, ...] = (0.50, 0.34, 0.22)
 
     def __post_init__(self) -> None:
         if not 0 <= self.minimum_board_confidence <= 1:
@@ -248,47 +254,42 @@ class MoveExecutorPolicy:
             raise ValueError(
                 "activation timeout must be positive and tolerance non-negative"
             )
+        if not self.aim_depths or any(not 0 < depth < 1 for depth in self.aim_depths):
+            raise ValueError("aim depths must be a non-empty series within 0...1")
 
 
-@runtime_checkable
 class ChessApplicationStatusPort(Protocol):
     is_frontmost: bool
     process_identifier: int | None
 
 
-@runtime_checkable
 class ChessApplicationControllerPort(Protocol):
     async def activate(self, timeout: float = 3.0) -> ChessApplicationStatusPort: ...
 
     async def status(self) -> ChessApplicationStatusPort: ...
 
 
-@runtime_checkable
 class ChessWindowPort(Protocol):
     window_id: int
     frame: Rect
     process_id: int
 
 
-@runtime_checkable
 class ChessWindowLocatorPort(Protocol):
     async def locate(
         self, expected_process_id: int | None = None
     ) -> ChessWindowPort: ...
 
 
-@runtime_checkable
 class BoardTrackerPort(Protocol):
     async def force_fresh_detection(self) -> object: ...
 
 
-@runtime_checkable
 class BoardTrackerStatePort(Protocol):
     generation: int
     ready_detection: BoardDetection | None
 
 
-@runtime_checkable
 class ChessGameSnapshotPort(Protocol):
     async def game_snapshot(
         self,
@@ -296,7 +297,12 @@ class ChessGameSnapshotPort(Protocol):
     ) -> tuple[str, Mapping[str, str]]: ...
 
 
-@runtime_checkable
+class ChessSquareResolverPort(Protocol):
+    async def square_at_point(
+        self, process_identifier: int, point: Point
+    ) -> str | None: ...
+
+
 class ChessMovePostconditionPort(Protocol):
     async def capture(self, process_identifier: int, move: ChessMove) -> object: ...
 
@@ -316,16 +322,11 @@ ExecutionReporter = Callable[[MoveExecutionEvent], None]
 DisplayContainsBoard = Callable[[Quad], bool]
 Sleep = Callable[[float], Awaitable[None]]
 Clock = Callable[[], float]
-T = TypeVar("T")
-
-
-class _PreparedCapability:
-    __slots__ = ("__weakref__",)
 
 
 @dataclass(frozen=True, slots=True)
 class PreparedMove:
-    """An immutable, executor-owned capability for one exact Chess baseline."""
+    """An immutable prepared move for one exact Chess baseline."""
 
     move: ChessMove
     detection: BoardDetection
@@ -338,21 +339,8 @@ class PreparedMove:
     square_snapshot: tuple[tuple[ChessSquare, str], ...]
     game_state: ChessGameState
     tracking_generation: int
-    expires_at: float | None = None
-    _capability: _PreparedCapability = field(
-        default_factory=_PreparedCapability,
-        repr=False,
-        compare=True,
-    )
-
-
-PreparedCommand = PreparedMove
-
-
-@dataclass(frozen=True, slots=True)
-class _PreparedRecord:
-    public_fields: tuple[object, ...]
-    before_state: object | None
+    _before_state: object | None = field(repr=False, compare=False)
+    _owner_token: object = field(repr=False, compare=False)
 
 
 @dataclass(frozen=True, slots=True)
@@ -379,13 +367,13 @@ class ChessMoveExecutor:
         display_contains_board: DisplayContainsBoard,
         postcondition: ChessMovePostconditionPort,
         snapshot_probe: ChessGameSnapshotPort | None = None,
+        square_resolver: ChessSquareResolverPort | None = None,
         policy: MoveExecutorPolicy | None = None,
         accessibility_trusted: Callable[[], bool] = is_accessibility_trusted,
         screen_recording_allowed: Callable[[], bool] = has_screen_recording_access,
         reporter: ExecutionReporter | None = None,
         sleep: Sleep = asyncio.sleep,
         clock: Clock = time.time,
-        deadline_clock: Clock = time.monotonic,
     ) -> None:
         self._application_controller = application_controller
         self._window_locator = window_locator
@@ -394,36 +382,29 @@ class ChessMoveExecutor:
         self._display_contains_board = display_contains_board
         self._postcondition = postcondition
         self._snapshot_probe = snapshot_probe
+        self._square_resolver = square_resolver
         self.policy = policy or MoveExecutorPolicy()
         self._accessibility_trusted = accessibility_trusted
         self._screen_recording_allowed = screen_recording_allowed
         self._reporter = reporter or (lambda event: None)
         self._sleep = sleep
         self._clock = clock
-        self._deadline_clock = deadline_clock
         self._is_executing = False
-        self._prepared: WeakKeyDictionary[_PreparedCapability, _PreparedRecord] = (
-            WeakKeyDictionary()
-        )
+        self._pending_owner_token: object | None = None
 
-    async def prepare(
-        self,
-        move: ChessMove,
-        *,
-        expires_at: float | None = None,
-    ) -> PreparedMove:
+    async def prepare(self, move: ChessMove) -> PreparedMove:
         self._begin_transaction()
         try:
-            return await self._prepare_and_register(move, expires_at=expires_at)
+            return await self._prepare(move)
         finally:
             self._is_executing = False
 
     async def execute_prepared(self, prepared: PreparedMove) -> MoveExecutionResult:
-        record = self._consume_prepared(prepared)
+        self._consume_prepared(prepared)
         self._begin_transaction()
         try:
             await self._revalidate_prepared(prepared)
-            return await self._execute_prepared(prepared, record.before_state)
+            return await self._execute_prepared(prepared)
         finally:
             self._is_executing = False
 
@@ -432,14 +413,19 @@ class ChessMoveExecutor:
             raise MoveExecutionBlocked(MoveExecutionReason.ALREADY_EXECUTING)
         self._is_executing = True
 
-    async def _prepare_and_register(
-        self,
-        move: ChessMove,
-        *,
-        expires_at: float | None,
-    ) -> PreparedMove:
+    def _consume_prepared(self, prepared: PreparedMove) -> None:
+        if not isinstance(prepared, PreparedMove):
+            raise MoveExecutionBlocked(MoveExecutionReason.INVALID_PREPARED_MOVE)
+        pending_token = self._pending_owner_token
+        if pending_token is None or prepared._owner_token is not pending_token:
+            raise MoveExecutionBlocked(MoveExecutionReason.INVALID_PREPARED_MOVE)
+        if self._is_executing:
+            raise MoveExecutionBlocked(MoveExecutionReason.ALREADY_EXECUTING)
+        self._pending_owner_token = None
+
+    async def _prepare(self, move: ChessMove) -> PreparedMove:
         try:
-            return await self._capture_prepared(move, expires_at=expires_at)
+            return await self._capture_prepared(move)
         except asyncio.CancelledError:
             raise
         except MoveExecutionBlocked:
@@ -450,13 +436,7 @@ class ChessMoveExecutor:
                 underlying_error=error,
             ) from error
 
-    async def _capture_prepared(
-        self,
-        move: ChessMove,
-        *,
-        expires_at: float | None,
-    ) -> PreparedMove:
-        self._validate_expiry(expires_at)
+    async def _capture_prepared(self, move: ChessMove) -> PreparedMove:
         if not self._accessibility_trusted():
             raise MoveExecutionBlocked(MoveExecutionReason.ACCESSIBILITY_DENIED)
         self._report_validation(MoveValidation.ACCESSIBILITY_PERMISSION)
@@ -497,12 +477,13 @@ class ChessMoveExecutor:
             raise MoveExecutionBlocked(MoveExecutionReason.WRONG_WINDOW)
         self._report_validation(MoveValidation.BOARD_MATCHES_WINDOW)
 
-        source, destination = self._validated_points(
-            move, detection, initial_window.frame
+        source, destination = await self._validated_points(
+            move, detection, initial_window.frame, process_identifier
         )
         self._report_validation(MoveValidation.SQUARE_GEOMETRY)
         self._report_validation(MoveValidation.POINTS_INSIDE_WINDOW)
         self._report_validation(MoveValidation.BOARD_WITHIN_SINGLE_DISPLAY)
+        self._report_validation(MoveValidation.CLICK_TARGETS_RESOLVED)
 
         status = await self._application_controller.status()
         if not self._same_frontmost_process(status, process_identifier):
@@ -520,9 +501,10 @@ class ChessMoveExecutor:
         baseline = await self._capture_game_baseline(process_identifier)
         before_state = await self._capture_postcondition(process_identifier, move)
         self._raise_if_cancelled()
-        self._validate_expiry(expires_at)
 
-        prepared = PreparedMove(
+        owner_token = object()
+        self._pending_owner_token = owner_token
+        return PreparedMove(
             move=move,
             detection=detection,
             source=source,
@@ -534,24 +516,9 @@ class ChessMoveExecutor:
             square_snapshot=baseline.square_snapshot,
             game_state=baseline.game_state,
             tracking_generation=tracked.generation,
-            expires_at=expires_at,
+            _before_state=before_state,
+            _owner_token=owner_token,
         )
-        self._prepared[prepared._capability] = _PreparedRecord(
-            public_fields=self._prepared_public_fields(prepared),
-            before_state=before_state,
-        )
-        return prepared
-
-    def _consume_prepared(self, prepared: PreparedMove) -> _PreparedRecord:
-        if not isinstance(prepared, PreparedMove):
-            raise MoveExecutionBlocked(MoveExecutionReason.INVALID_PREPARED_MOVE)
-        record = self._prepared.pop(prepared._capability, None)
-        if record is None or record.public_fields != self._prepared_public_fields(
-            prepared
-        ):
-            raise MoveExecutionBlocked(MoveExecutionReason.INVALID_PREPARED_MOVE)
-        self._validate_expiry(prepared.expires_at)
-        return record
 
     async def _revalidate_prepared(self, prepared: PreparedMove) -> None:
         try:
@@ -590,13 +557,13 @@ class ChessMoveExecutor:
                 raise MoveExecutionBlocked(
                     MoveExecutionReason.PREPARED_BASELINE_CHANGED
                 )
-            self._validated_points(
+            await self._validated_points(
                 prepared.move,
                 tracked.detection,
                 current_window.frame,
+                prepared.process_identifier,
                 expected=(prepared.source, prepared.destination),
             )
-            self._validate_expiry(prepared.expires_at)
             self._raise_if_cancelled()
             self._report_validation(
                 MoveValidation.CHESS_FOCUSED_IMMEDIATELY_BEFORE_SOURCE
@@ -611,11 +578,7 @@ class ChessMoveExecutor:
                 underlying_error=error,
             ) from error
 
-    async def _execute_prepared(
-        self,
-        prepared: PreparedMove,
-        before_state: object | None,
-    ) -> MoveExecutionResult:
+    async def _execute_prepared(self, prepared: PreparedMove) -> MoveExecutionResult:
         move = prepared.move
         try:
             cancelled_during_source = await self._post_input_atomically(
@@ -675,7 +638,7 @@ class ChessMoveExecutor:
             confirmed = await self._postcondition.wait_until_applied(
                 prepared.process_identifier,
                 move,
-                before_state,
+                prepared._before_state,
             )
             if not confirmed:
                 raise MoveExecutionUnconfirmed(
@@ -816,61 +779,81 @@ class ChessMoveExecutor:
             self._snapshot_probe = ChessBoardAccessibilityProbe()
         return self._snapshot_probe
 
-    def _validated_points(
+    def _square_resolver_port(self) -> ChessSquareResolverPort:
+        if self._square_resolver is None:
+            from voice_chess_cua.macos.chess_accessibility import (
+                ChessBoardAccessibilityProbe,
+            )
+
+            self._square_resolver = ChessBoardAccessibilityProbe()
+        return self._square_resolver
+
+    async def _validated_points(
         self,
         move: ChessMove,
         detection: BoardDetection,
         window_frame: Rect,
+        process_identifier: int,
         *,
         expected: tuple[Point, Point] | None = None,
     ) -> tuple[Point, Point]:
+        if not self._display_contains_board(detection.geometry.quad):
+            raise MoveExecutionBlocked(MoveExecutionReason.BOARD_SPANS_DISPLAYS)
+        source = await self._clickable_point(
+            move.source, detection, window_frame, process_identifier
+        )
+        destination = await self._clickable_point(
+            move.destination, detection, window_frame, process_identifier
+        )
+        if expected is not None and (source, destination) != expected:
+            raise MoveExecutionBlocked(MoveExecutionReason.PREPARED_BASELINE_CHANGED)
+        return source, destination
+
+    async def _clickable_point(
+        self,
+        square: ChessSquare,
+        detection: BoardDetection,
+        window_frame: Rect,
+        process_identifier: int,
+    ) -> Point:
+        resolver = self._square_resolver_port()
+        notation = square.notation.lower()
+        for depth in self.policy.aim_depths:
+            point = self._geometric_point(square, detection, window_frame, depth)
+            self._raise_if_cancelled()
+            try:
+                resolved = await resolver.square_at_point(process_identifier, point)
+            except asyncio.CancelledError:
+                raise
+            except Exception as error:
+                raise MoveExecutionBlocked(
+                    MoveExecutionReason.SQUARE_NOT_CLICKABLE,
+                    underlying_error=error,
+                ) from error
+            if resolved == notation:
+                return point
+        raise MoveExecutionBlocked(MoveExecutionReason.SQUARE_NOT_CLICKABLE)
+
+    def _geometric_point(
+        self,
+        square: ChessSquare,
+        detection: BoardDetection,
+        window_frame: Rect,
+        depth: float,
+    ) -> Point:
         try:
-            source = detection.geometry.center_of(move.source)
-            destination = detection.geometry.center_of(move.destination)
-            points_are_inside = detection.geometry.contains(
-                source
-            ) and detection.geometry.contains(destination)
+            point = detection.geometry.aim_point(square, depth)
+            is_inside = detection.geometry.contains(point)
         except (ArithmeticError, TypeError, ValueError) as error:
             raise MoveExecutionBlocked(
                 MoveExecutionReason.INVALID_SQUARE_GEOMETRY,
                 underlying_error=error,
             ) from error
-        if not source.is_finite or not destination.is_finite or not points_are_inside:
+        if not point.is_finite or not is_inside:
             raise MoveExecutionBlocked(MoveExecutionReason.INVALID_SQUARE_GEOMETRY)
-        if not window_frame.contains(source) or not window_frame.contains(destination):
+        if not window_frame.contains(point):
             raise MoveExecutionBlocked(MoveExecutionReason.POINT_OUTSIDE_WINDOW)
-        if not self._display_contains_board(detection.geometry.quad):
-            raise MoveExecutionBlocked(MoveExecutionReason.BOARD_SPANS_DISPLAYS)
-        if expected is not None and (source, destination) != expected:
-            raise MoveExecutionBlocked(MoveExecutionReason.PREPARED_BASELINE_CHANGED)
-        return source, destination
-
-    def _validate_expiry(self, expires_at: float | None) -> None:
-        if expires_at is None:
-            return
-        if isinstance(expires_at, bool) or not isinstance(expires_at, (int, float)):
-            raise TypeError("prepared move expiry must be a finite timestamp")
-        if not isfinite(expires_at):
-            raise ValueError("prepared move expiry must be a finite timestamp")
-        if self._deadline_clock() >= expires_at:
-            raise MoveExecutionBlocked(MoveExecutionReason.PREPARED_MOVE_EXPIRED)
-
-    @staticmethod
-    def _prepared_public_fields(prepared: PreparedMove) -> tuple[object, ...]:
-        return (
-            prepared.move,
-            prepared.detection,
-            prepared.source,
-            prepared.destination,
-            prepared.process_identifier,
-            prepared.window_id,
-            prepared.window_frame,
-            prepared.ax_title,
-            prepared.square_snapshot,
-            prepared.game_state,
-            prepared.tracking_generation,
-            prepared.expires_at,
-        )
+        return point
 
     def _window_matches_prepared(
         self,
@@ -984,6 +967,3 @@ class ChessMoveExecutor:
             self._reporter(event)
         except Exception:  # noqa: BLE001 - telemetry must never affect input safety
             return
-
-
-MoveExecutor = ChessMoveExecutor

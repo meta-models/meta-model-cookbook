@@ -204,9 +204,6 @@ class RuntimeEventSink(Protocol):
     def emit(self, event: RuntimeEvent) -> None: ...
 
 
-EventSink = RuntimeEventSink
-
-
 class DiscardingRuntimeEventSink:
     def emit(self, event: RuntimeEvent) -> None:
         del event

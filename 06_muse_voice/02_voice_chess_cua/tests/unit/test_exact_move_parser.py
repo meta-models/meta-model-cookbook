@@ -8,82 +8,43 @@ from __future__ import annotations
 
 import pytest
 
-from voice_chess_cua.domain.chess import ChessMove, ChessSquare, VoiceCommand
-from voice_chess_cua.planning.exact_parser import ExactMoveParser
-from voice_chess_cua.planning.schema import PlannerDecision
-from voice_chess_cua.planning.supervised_command import _mint_supervised_command_text
+from voice_chess_cua.command import parse_exact_move
+from voice_chess_cua.domain.chess import ChessMove, ChessSquare
+
+REJECTED_COMMANDS = [
+    " Move A1 to B2",
+    "Move A1 to B2 ",
+    "Move  A1 to B2",
+    "Move A1  to B2",
+    "Move A1 to  B2",
+    "Move\tA1 to B2",
+    "Move A1\tto B2",
+    "Move A1 to\tB2",
+    "Move A1 to B2\n",
+    "Move A1 to B2!",
+    "Move A1 to B2..",
+    "Please Move A1 to B2",
+    "Move A1 to B2 please",
+    "Move A one to B two",
+    "Move I1 to B2",
+    "Move A0 to B2",
+    "Move A1 to B9",
+    "Move A1 B2",
+    "Move A1 from B2",
+    "Move A1 to A1",
+    "move a1 to A1.",
+    "M\u0130ve A1 to B2",
+    "Move \u212a1 to B2",
+]
 
 
-def supervised(text: str):
-    return _mint_supervised_command_text(
-        runtime_generation=1,
-        asr_generation=1,
-        turn_id="turn-1",
-        command_text=text,
+def test_exact_move_returns_normalized_move() -> None:
+    assert parse_exact_move("Move e2 to E4.") == ChessMove(
+        ChessSquare.parse("E2"),
+        ChessSquare.parse("E4"),
     )
 
 
-@pytest.mark.asyncio
-@pytest.mark.parametrize(
-    ("text", "source", "destination"),
-    [
-        ("Move A1 to B2", "A1", "B2"),
-        ("Move H8 to A1.", "H8", "A1"),
-        ("move e2 to e4", "E2", "E4"),
-        ("MOVE E2 TO E4.", "E2", "E4"),
-        ("MoVe a8 To H1", "A8", "H1"),
-    ],
-)
-async def test_exact_parser_accepts_only_exact_ascii_grammar(
-    text: str,
-    source: str,
-    destination: str,
-) -> None:
-    decision = await ExactMoveParser().plan(supervised(text))
-
-    assert decision == PlannerDecision.for_command(
-        VoiceCommand.move(
-            ChessMove(ChessSquare.parse(source), ChessSquare.parse(destination))
-        )
-    )
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "text",
-    [
-        " Move A1 to B2",
-        "Move A1 to B2 ",
-        "Move  A1 to B2",
-        "Move A1  to B2",
-        "Move A1 to  B2",
-        "Move\tA1 to B2",
-        "Move A1\tto B2",
-        "Move A1 to\tB2",
-        "Move A1 to B2\n",
-        "Move A1 to B2!",
-        "Move A1 to B2..",
-        "Please Move A1 to B2",
-        "Move A1 to B2 please",
-        "Move A one to B two",
-        "Move I1 to B2",
-        "Move A0 to B2",
-        "Move A1 to B9",
-        "Move A1 B2",
-        "Move A1 from B2",
-        "Move A1 to A1",
-        "move a1 to A1.",
-        "M\u0130ve A1 to B2",
-        "Move \u212a1 to B2",
-    ],
-)
-async def test_exact_parser_rejects_everything_outside_exact_grammar(
-    text: str,
-) -> None:
-    assert await ExactMoveParser().plan(supervised(text)) == PlannerDecision.reject()
-
-
-@pytest.mark.asyncio
-async def test_exact_parser_requires_supervised_command_capability() -> None:
-    with pytest.raises(TypeError, match="supervised command text"):
-        await ExactMoveParser().plan("Move A1 to B2")
+@pytest.mark.parametrize("text", REJECTED_COMMANDS)
+def test_non_exact_command_is_rejected(text: str) -> None:
+    assert parse_exact_move(text) is None

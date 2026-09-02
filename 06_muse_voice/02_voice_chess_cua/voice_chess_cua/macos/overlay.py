@@ -22,7 +22,7 @@ from voice_chess_cua.domain.geometry import (
 )
 from voice_chess_cua.hud import HUDPhase, HUDPresentation, HUDState, present_hud
 
-from ._main_thread import run_on_main
+from .native import run_on_main
 
 _APPKIT_OVERLAY_CLASSES: tuple[Any, Any] | None = None
 _HUD_VOICE_VALUE_WIDTH = 106.0
@@ -288,7 +288,7 @@ class BoardOverlay:
 
 class _AppKitOverlayBackend:
     def __init__(self) -> None:
-        from ._native import load_framework
+        from .native import load_framework
 
         self._appkit = load_framework("AppKit")
         self._quartz = load_framework("Quartz")

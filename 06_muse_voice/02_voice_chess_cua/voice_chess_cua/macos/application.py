@@ -13,7 +13,7 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Any, Protocol
 
-from ._main_thread import run_on_main
+from .native import run_on_main
 
 CHESS_BUNDLE_IDENTIFIER = "com.apple.Chess"
 
@@ -34,6 +34,10 @@ class ChessActivationTimedOutError(ChessApplicationError):
     pass
 
 
+class ChessApplicationReplacedError(ChessApplicationError):
+    pass
+
+
 @dataclass(frozen=True, slots=True)
 class ChessApplicationStatus:
     is_running: bool
@@ -49,7 +53,7 @@ class ApplicationBackend(Protocol):
 
 class _PyObjCApplicationBackend:
     def __init__(self) -> None:
-        from ._native import load_framework
+        from .native import load_framework
 
         self._appkit = load_framework("AppKit")
 
@@ -128,6 +132,11 @@ class ChessApplicationController:
         self._backend = backend
         self._poll_interval = poll_interval
         self._sleep = sleep
+        self._bound_process_identifier: int | None = None
+
+    @property
+    def bound_process_identifier(self) -> int | None:
+        return self._bound_process_identifier
 
     @property
     def backend(self) -> ApplicationBackend:
@@ -155,6 +164,7 @@ class ChessApplicationController:
                         "Chess.app did not provide a valid process identifier."
                     )
                 _positive_process_identifier(current.process_identifier)
+                self._bind_process_identifier(current.process_identifier)
                 return current
             if loop.time() >= deadline:
                 if not current.is_running:
@@ -165,6 +175,15 @@ class ChessApplicationController:
                     "Chess.app did not become active before the safety timeout."
                 )
             await self._sleep(self._poll_interval)
+
+    def _bind_process_identifier(self, process_identifier: int) -> None:
+        if self._bound_process_identifier is None:
+            self._bound_process_identifier = process_identifier
+            return
+        if process_identifier != self._bound_process_identifier:
+            raise ChessApplicationReplacedError(
+                "Chess.app process changed after activation."
+            )
 
 
 def _positive_process_identifier(application_or_pid: Any) -> int:

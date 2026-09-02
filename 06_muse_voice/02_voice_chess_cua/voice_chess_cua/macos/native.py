@@ -4,16 +4,34 @@
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
 
-"""Awaitable dispatch of AppKit work to the process main thread."""
+"""Shared native helper functions for macOS adapters."""
 
 from __future__ import annotations
 
 import asyncio
 from collections.abc import Callable
 from functools import partial
+from importlib import import_module
+from types import ModuleType
 
-from ._asyncio import call_soon_threadsafe_if_open
-from ._native import load_framework
+
+class NativeDependencyError(RuntimeError):
+    """Raised when a concrete macOS adapter cannot load its native bridge."""
+
+
+def call_soon_threadsafe_if_open(
+    loop: asyncio.AbstractEventLoop,
+    callback: Callable[[], None],
+) -> bool:
+    """Schedule callback unless the owning event loop has already closed."""
+    if loop.is_closed():
+        return False
+    try:
+        loop.call_soon_threadsafe(callback)
+    except RuntimeError:
+        # The loop can close between is_closed() and call_soon_threadsafe().
+        return False
+    return True
 
 
 async def run_on_main[T](work: Callable[[], T]) -> T:
@@ -44,3 +62,12 @@ async def run_on_main[T](work: Callable[[], T]) -> T:
 
     foundation.NSOperationQueue.mainQueue().addOperationWithBlock_(execute)
     return await future
+
+
+def load_framework(module_name: str) -> ModuleType:
+    try:
+        return import_module(module_name)
+    except ImportError as error:
+        raise NativeDependencyError(
+            f"The {module_name} PyObjC framework is required for this macOS operation."
+        ) from error

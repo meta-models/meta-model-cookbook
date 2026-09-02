@@ -18,7 +18,6 @@ from voice_chess_cua.domain.chess import (
     BoardOrientation,
     ChessMove,
     ChessSquare,
-    VoiceCommand,
 )
 from voice_chess_cua.domain.game_state import ChessGameState
 from voice_chess_cua.domain.geometry import (
@@ -28,16 +27,11 @@ from voice_chess_cua.domain.geometry import (
     Quad,
     Rect,
 )
-from voice_chess_cua.planning.schema import PlannerDecision
-from voice_chess_cua.planning.supervised_command import SupervisedCommandText
-from voice_chess_cua.runtime import (
-    RuntimeCredentials,
-    RuntimeDependencies,
-    VoiceCUARuntime,
-)
+from voice_chess_cua.runtime.app import RuntimeDependencies, VoiceCUARuntime
 from voice_chess_cua.runtime.ports import (
     FinalTranscript,
     PartialTranscript,
+    RuntimeCredentials,
     SupervisedFinalTranscript,
     TrackingFailureReason,
     TrackingStatus,
@@ -177,53 +171,25 @@ class AudioFake:
         return None
 
 
-class PlannerFake:
-    def __init__(self, decision: PlannerDecision) -> None:
-        self.decision = decision
-        self.requests: list[SupervisedCommandText] = []
-        self.entered = asyncio.Event()
-        self.block: asyncio.Event | None = None
-
-    async def plan(self, supervised_command: object) -> object:
-        assert isinstance(supervised_command, SupervisedCommandText)
-        self.requests.append(supervised_command)
-        self.entered.set()
-        if self.block is not None:
-            await self.block.wait()
-        return self.decision
-
-
-class SnapshotFake:
-    def __init__(self, *, drift_after_first: bool = False) -> None:
-        self.calls = 0
-        self.drift_after_first = drift_after_first
-
-    async def game_snapshot(self, process_identifier: int):
-        assert process_identifier == 42
-        self.calls += 1
-        title = "Game 2" if self.drift_after_first and self.calls > 1 else "Game 1"
-        return title, {
-            square.notation.lower(): square.notation.lower()
-            for square in ChessSquare.all()
-        }
-
-
 class ExecutorFake:
     def __init__(self) -> None:
         self.prepared: list[PreparedMove] = []
         self.executed: list[PreparedMove] = []
+        self.prepare_entered = asyncio.Event()
+        self.prepare_release: asyncio.Event | None = None
         self.execution_started = asyncio.Event()
         self.execution_release: asyncio.Event | None = None
+        self.execution_error: BaseException | None = None
         self.execution_cancelled = False
         self.returned = asyncio.Event()
 
     async def prepare(
         self,
         move: ChessMove,
-        *,
-        expires_at: float | None = None,
     ) -> PreparedMove:
-        assert expires_at is None
+        self.prepare_entered.set()
+        if self.prepare_release is not None:
+            await self.prepare_release.wait()
         prepared = PreparedMove(
             move=move,
             detection=BoardDetection(
@@ -237,7 +203,6 @@ class ExecutorFake:
                     BoardOrientation.WHITE_BOTTOM,
                 ),
                 confidence=1.0,
-                proposal_score=1.0,
                 source_window_id=7,
             ),
             source=Point(450, 750),
@@ -251,6 +216,8 @@ class ExecutorFake:
             ),
             game_state=ChessGameState.empty(),
             tracking_generation=1,
+            _before_state=object(),
+            _owner_token=object(),
         )
         self.prepared.append(prepared)
         return prepared
@@ -259,6 +226,8 @@ class ExecutorFake:
         assert isinstance(prepared, PreparedMove)
         self.executed.append(prepared)
         self.execution_started.set()
+        if self.execution_error is not None:
+            raise self.execution_error
         try:
             if self.execution_release is not None:
                 await self.execution_release.wait()
@@ -286,21 +255,15 @@ class NoticeFake:
 class Scenario:
     runtime: VoiceCUARuntime
     asr: ASRFake
-    planner: PlannerFake
-    snapshots: SnapshotFake
     executor: ExecutorFake
     notices: NoticeFake
 
 
 async def start_scenario(
-    decision: PlannerDecision,
     *,
-    drift_after_first: bool = False,
     dry_run: bool = False,
 ) -> Scenario:
     asr = ASRFake()
-    planner = PlannerFake(decision)
-    snapshots = SnapshotFake(drift_after_first=drift_after_first)
     executor = ExecutorFake()
     notices = NoticeFake()
     runtime = VoiceCUARuntime(
@@ -313,10 +276,8 @@ async def start_scenario(
             overlay=OverlayFake(),
             asr=asr,
             audio=AudioFake(),
-            planner=planner,
             application_host=HostFake(),
             notices=notices,
-            snapshot_probe=snapshots,
             move_executor=executor,
         ),
         dry_run=dry_run,
@@ -325,10 +286,9 @@ async def start_scenario(
     asr.generation = 1
     asr.stream.put(VoiceLifecycleEvent(VoiceLifecycle.READY, 1))
     await eventually(lambda: runtime._current_asr_generation == 1)
-    return Scenario(runtime, asr, planner, snapshots, executor, notices)
+    return Scenario(runtime, asr, executor, notices)
 
 
-@pytest.mark.asyncio
 async def test_asr_startup_failure_emits_safe_tls_diagnostics() -> None:
     tls_error = ssl.SSLCertVerificationError(1, "certificate detail with secret")
     transport_error = ASRTransportError(ASRTransportPhase.WEBSOCKET_CONNECT)
@@ -344,10 +304,8 @@ async def test_asr_startup_failure_emits_safe_tls_diagnostics() -> None:
             overlay=OverlayFake(),
             asr=ASRFake(transport_error),
             audio=AudioFake(),
-            planner=PlannerFake(PlannerDecision.reject()),
             application_host=HostFake(),
             notices=notices,
-            snapshot_probe=SnapshotFake(),
             move_executor=ExecutorFake(),
         )
     )
@@ -371,9 +329,8 @@ async def test_asr_startup_failure_emits_safe_tls_diagnostics() -> None:
     assert "secret" not in rendered
 
 
-@pytest.mark.asyncio
 async def test_tracking_failures_are_deduplicated_and_recovery_is_reported() -> None:
-    scenario = await start_scenario(move_decision())
+    scenario = await start_scenario()
     tracking = scenario.runtime._deps.tracking
     assert isinstance(tracking, TrackingFake)
     failed = TrackingUpdate(
@@ -400,7 +357,7 @@ async def test_tracking_failures_are_deduplicated_and_recovery_is_reported() -> 
         TrackingUpdate(
             TrackingStatus.FAILED,
             generation=1,
-            failure_reason=TrackingFailureReason.CAPTURE_TIMEOUT,
+            failure_reason=TrackingFailureReason.WINDOW_DISCOVERY_TIMEOUT,
         )
     )
     await eventually(
@@ -422,7 +379,6 @@ async def test_tracking_failures_are_deduplicated_and_recovery_is_reported() -> 
             )
         ),
         0.99,
-        1.0,
         source_window_id=7,
     )
     tracking.stream.put(TrackingUpdate(TrackingStatus.STABLE, 1, detection))
@@ -459,18 +415,9 @@ async def test_tracking_failures_are_deduplicated_and_recovery_is_reported() -> 
     await scenario.runtime.shutdown(send_end_stream=False)
 
 
-def move_decision() -> PlannerDecision:
-    return PlannerDecision.for_command(
-        VoiceCommand.move(ChessMove(ChessSquare.parse("E2"), ChessSquare.parse("E4")))
-    )
-
-
-@pytest.mark.asyncio
 async def test_supervised_final_automatically_executes_prepared_move_once() -> None:
-    scenario = await start_scenario(move_decision())
-    scenario.asr.stream.put(
-        SupervisedFinalTranscript(1, "turn-1", "  Move E2 to E4, PLEASE!  ")
-    )
+    scenario = await start_scenario()
+    scenario.asr.stream.put(SupervisedFinalTranscript(1, "turn-1", "Move E2 to E4"))
 
     await eventually(
         lambda: any(
@@ -479,12 +426,6 @@ async def test_supervised_final_automatically_executes_prepared_move_once() -> N
         )
     )
 
-    request = scenario.planner.requests[0]
-    assert request.runtime_generation == 1
-    assert request.asr_generation == 1
-    assert request.turn_id == "turn-1"
-    assert request.value == "  Move E2 to E4, PLEASE!  "
-    assert scenario.snapshots.calls == 2
     assert len(scenario.executor.prepared) == 1
     assert scenario.executor.executed == scenario.executor.prepared
     assert any(
@@ -494,9 +435,58 @@ async def test_supervised_final_automatically_executes_prepared_move_once() -> N
     await scenario.runtime.shutdown(send_end_stream=False)
 
 
-@pytest.mark.asyncio
+async def test_non_exact_supervised_final_is_rejected_before_execution() -> None:
+    scenario = await start_scenario()
+    scenario.asr.stream.put(SupervisedFinalTranscript(1, "turn-1", "Move a pawn"))
+
+    await eventually(lambda: "turn-1" in scenario.runtime._seen_final_turns)
+    await eventually(
+        lambda: any(
+            getattr(event, "event", None) == "no_move"
+            for event in scenario.notices.events
+        )
+    )
+    await eventually(lambda: scenario.runtime._planning_task is None)
+
+    assert scenario.executor.prepared == []
+    assert scenario.executor.executed == []
+    assert not any(
+        getattr(event, "event", None) == "request_started"
+        for event in scenario.notices.events
+    )
+    await scenario.runtime.shutdown(send_end_stream=False)
+
+
+async def test_execution_exception_emits_safe_cua_command_failure() -> None:
+    scenario = await start_scenario()
+    scenario.executor.execution_error = RuntimeError("secret adapter detail")
+    scenario.asr.stream.put(SupervisedFinalTranscript(1, "turn-1", "Move E2 to E4"))
+
+    await eventually(
+        lambda: any(
+            getattr(event, "stage", None) == "cua"
+            and getattr(event, "event", None) == "command_failed"
+            for event in scenario.notices.events
+        )
+    )
+
+    failure = next(
+        event
+        for event in scenario.notices.events
+        if getattr(event, "event", None) == "command_failed"
+    )
+    fields = {field.key: field.rendered_value for field in failure.fields}
+    assert fields == {"category": '"RuntimeError"'}
+    assert "secret adapter detail" not in " ".join(fields.values())
+    assert not any(
+        getattr(event, "event", None) == "parse_failed"
+        for event in scenario.notices.events
+    )
+    await scenario.runtime.shutdown(send_end_stream=False)
+
+
 async def test_dry_run_prepares_but_never_consumes_the_move_capability() -> None:
-    scenario = await start_scenario(move_decision(), dry_run=True)
+    scenario = await start_scenario(dry_run=True)
     scenario.asr.stream.put(SupervisedFinalTranscript(1, "turn-1", "Move E2 to E4"))
 
     await eventually(
@@ -511,30 +501,20 @@ async def test_dry_run_prepares_but_never_consumes_the_move_capability() -> None
     await scenario.runtime.shutdown(send_end_stream=False)
 
 
-@pytest.mark.asyncio
-async def test_partials_raw_finals_non_moves_and_board_drift_never_execute() -> None:
-    non_move = await start_scenario(PlannerDecision.reject())
-    non_move.asr.stream.put(PartialTranscript("partial", "Move E2"))
-    non_move.asr.stream.put(FinalTranscript("raw", "Move E2 to E4"))
-    non_move.asr.stream.put(SupervisedFinalTranscript(1, "turn-1", "Move a pawn"))
-    await eventually(lambda: len(non_move.planner.requests) == 1)
-    await eventually(lambda: non_move.runtime._planning_task is None)
-    assert non_move.executor.prepared == []
-    assert non_move.executor.executed == []
-    await non_move.runtime.shutdown(send_end_stream=False)
-
-    drift = await start_scenario(move_decision(), drift_after_first=True)
-    drift.asr.stream.put(SupervisedFinalTranscript(1, "turn-1", "Move E2 to E4"))
-    await eventually(lambda: drift.snapshots.calls == 2)
-    await eventually(lambda: drift.runtime._planning_task is None)
-    assert drift.executor.prepared == []
-    assert drift.executor.executed == []
-    await drift.runtime.shutdown(send_end_stream=False)
+async def test_partials_raw_finals_and_non_moves_never_execute() -> None:
+    scenario = await start_scenario()
+    scenario.asr.stream.put(PartialTranscript("partial", "Move E2"))
+    scenario.asr.stream.put(FinalTranscript("raw", "Move E2 to E4"))
+    scenario.asr.stream.put(SupervisedFinalTranscript(1, "turn-1", "Move a pawn"))
+    await eventually(lambda: "turn-1" in scenario.runtime._seen_final_turns)
+    await eventually(lambda: scenario.runtime._planning_task is None)
+    assert scenario.executor.prepared == []
+    assert scenario.executor.executed == []
+    await scenario.runtime.shutdown(send_end_stream=False)
 
 
-@pytest.mark.asyncio
-async def test_non_command_voice_events_never_reach_planner() -> None:
-    scenario = await start_scenario(move_decision())
+async def test_non_command_voice_events_never_reach_executor() -> None:
+    scenario = await start_scenario()
     scenario.asr.stream.put(PartialTranscript("partial", "Move E2"))
     scenario.asr.stream.put(FinalTranscript("raw", "Move E2 to E4"))
     scenario.asr.stream.put(SupervisedFinalTranscript(2, "stale", "Move E2 to E4"))
@@ -552,8 +532,6 @@ async def test_non_command_voice_events_never_reach_planner() -> None:
         lambda: {"superseded", "empty"} <= scenario.runtime._seen_final_turns
     )
 
-    assert scenario.planner.requests == []
-    assert scenario.snapshots.calls == 0
     assert scenario.executor.prepared == []
     assert scenario.executor.executed == []
     assert {getattr(event, "event", None) for event in scenario.notices.events} >= {
@@ -565,12 +543,11 @@ async def test_non_command_voice_events_never_reach_planner() -> None:
     await scenario.runtime.shutdown(send_end_stream=False)
 
 
-@pytest.mark.asyncio
-async def test_duplicate_supervised_final_reaches_planner_only_once() -> None:
-    scenario = await start_scenario(PlannerDecision.reject())
-    duplicate = SupervisedFinalTranscript(1, "turn-1", "Move E2 to E4")
+async def test_duplicate_supervised_final_is_parsed_only_once() -> None:
+    scenario = await start_scenario()
+    duplicate = SupervisedFinalTranscript(1, "turn-1", "Move a pawn")
     scenario.asr.stream.put(duplicate)
-    await eventually(lambda: len(scenario.planner.requests) == 1)
+    await eventually(lambda: "turn-1" in scenario.runtime._seen_final_turns)
     await eventually(lambda: scenario.runtime._planning_task is None)
 
     scenario.asr.stream.put(duplicate)
@@ -584,49 +561,51 @@ async def test_duplicate_supervised_final_reaches_planner_only_once() -> None:
     )
     await eventually(lambda: "drain-marker" in scenario.runtime._seen_final_turns)
 
-    assert len(scenario.planner.requests) == 1
-    assert scenario.planner.requests[0].value == "Move E2 to E4"
+    assert (
+        sum(
+            getattr(event, "event", None) == "no_move"
+            for event in scenario.notices.events
+        )
+        == 1
+    )
     assert scenario.executor.prepared == []
     await scenario.runtime.shutdown(send_end_stream=False)
 
 
-@pytest.mark.asyncio
 async def test_final_received_while_transaction_busy_is_not_queued() -> None:
-    scenario = await start_scenario(PlannerDecision.reject())
-    scenario.planner.block = asyncio.Event()
+    scenario = await start_scenario()
+    scenario.executor.prepare_release = asyncio.Event()
     scenario.asr.stream.put(SupervisedFinalTranscript(1, "turn-1", "Move E2 to E4"))
-    await scenario.planner.entered.wait()
+    await scenario.executor.prepare_entered.wait()
 
     scenario.asr.stream.put(SupervisedFinalTranscript(1, "turn-2", "Move D2 to D4"))
     await eventually(lambda: "turn-2" in scenario.runtime._seen_final_turns)
 
-    assert len(scenario.planner.requests) == 1
-    assert scenario.planner.requests[0].turn_id == "turn-1"
-    scenario.planner.block.set()
+    scenario.executor.prepare_release.set()
     await eventually(lambda: scenario.runtime._planning_task is None)
-    assert scenario.executor.prepared == []
+    assert [prepared.move for prepared in scenario.executor.prepared] == [
+        ChessMove(ChessSquare.parse("E2"), ChessSquare.parse("E4"))
+    ]
     await scenario.runtime.shutdown(send_end_stream=False)
 
 
-@pytest.mark.asyncio
 async def test_asr_generation_advance_before_ready_delivery_blocks_stale_plan() -> None:
-    scenario = await start_scenario(move_decision())
-    scenario.planner.block = asyncio.Event()
+    scenario = await start_scenario()
+    scenario.executor.prepare_release = asyncio.Event()
     scenario.asr.stream.put(SupervisedFinalTranscript(1, "turn-1", "Move E2 to E4"))
-    await scenario.planner.entered.wait()
+    await scenario.executor.prepare_entered.wait()
 
     scenario.asr.generation = 2
-    scenario.planner.block.set()
+    scenario.executor.prepare_release.set()
     await eventually(lambda: scenario.runtime._planning_task is None)
 
-    assert scenario.executor.prepared == []
+    assert len(scenario.executor.prepared) == 1
     assert scenario.executor.executed == []
     await scenario.runtime.shutdown(send_end_stream=False)
 
 
-@pytest.mark.asyncio
 async def test_busy_started_turn_is_discarded_and_never_queued() -> None:
-    scenario = await start_scenario(move_decision())
+    scenario = await start_scenario()
     scenario.executor.execution_release = asyncio.Event()
     scenario.asr.stream.put(SupervisedFinalTranscript(1, "turn-1", "Move E2 to E4"))
     await scenario.executor.execution_started.wait()
@@ -641,14 +620,13 @@ async def test_busy_started_turn_is_discarded_and_never_queued() -> None:
     await asyncio.sleep(0)
     await asyncio.sleep(0)
 
-    assert len(scenario.planner.requests) == 1
+    assert len(scenario.executor.prepared) == 1
     assert len(scenario.executor.executed) == 1
     await scenario.runtime.shutdown(send_end_stream=False)
 
 
-@pytest.mark.asyncio
 async def test_busy_audio_requires_local_quiet_before_asr_forwarding() -> None:
-    scenario = await start_scenario(move_decision())
+    scenario = await start_scenario()
     scenario.executor.execution_release = asyncio.Event()
     scenario.asr.stream.put(SupervisedFinalTranscript(1, "turn-1", "Move E2 to E4"))
     await scenario.executor.execution_started.wait()
@@ -676,11 +654,10 @@ async def test_busy_audio_requires_local_quiet_before_asr_forwarding() -> None:
     await scenario.runtime.shutdown(send_end_stream=False)
 
 
-@pytest.mark.asyncio
 async def test_repeated_transaction_cancellation_cannot_cancel_committed_execution() -> (
     None
 ):
-    scenario = await start_scenario(move_decision())
+    scenario = await start_scenario()
     scenario.executor.execution_release = asyncio.Event()
     scenario.asr.stream.put(SupervisedFinalTranscript(1, "turn-1", "Move E2 to E4"))
     await scenario.executor.execution_started.wait()
@@ -702,9 +679,8 @@ async def test_repeated_transaction_cancellation_cannot_cancel_committed_executi
     await scenario.runtime.shutdown(send_end_stream=False)
 
 
-@pytest.mark.asyncio
 async def test_shutdown_waits_for_started_execution_without_cancelling_it() -> None:
-    scenario = await start_scenario(move_decision())
+    scenario = await start_scenario()
     scenario.executor.execution_release = asyncio.Event()
     scenario.asr.stream.put(SupervisedFinalTranscript(1, "turn-1", "Move E2 to E4"))
     await scenario.executor.execution_started.wait()
@@ -720,9 +696,8 @@ async def test_shutdown_waits_for_started_execution_without_cancelling_it() -> N
     assert len(scenario.executor.executed) == 1
 
 
-@pytest.mark.asyncio
 async def test_execution_commit_remains_busy_until_outer_transaction_finishes() -> None:
-    scenario = await start_scenario(move_decision())
+    scenario = await start_scenario()
     scenario.asr.stream.put(SupervisedFinalTranscript(1, "turn-1", "Move E2 to E4"))
     await scenario.executor.returned.wait()
 

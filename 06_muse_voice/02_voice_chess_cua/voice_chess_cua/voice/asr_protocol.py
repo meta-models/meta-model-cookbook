@@ -253,24 +253,3 @@ def _required_int(value: Mapping[str, Any], key: str) -> int:
 
 
 END_STREAM_DATA = b'{"type":"endStream"}'
-
-
-class ASRProtocol:
-    Authorization = Authorization
-    HandshakeRequest = HandshakeRequest
-    HandshakeResponse = HandshakeResponse
-    Transcript = Transcript
-    SpeechStart = SpeechStart
-    SpeechEnd = SpeechEnd
-    SpeechComplete = SpeechComplete
-    AudioProgress = AudioProgress
-    ServerError = ServerError
-    UnknownMessage = UnknownMessage
-    Mode = Mode
-    AudioEncoding = AudioEncoding
-    PartialMode = PartialMode
-    end_stream_data = END_STREAM_DATA
-
-    @staticmethod
-    def decode_server_message(data: str | bytes | bytearray) -> ServerMessage:
-        return decode_server_message(data)

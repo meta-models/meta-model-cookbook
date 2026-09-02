@@ -135,6 +135,7 @@ these recipes use a WebSocket client rather than the OpenAI SDK.
 | # | Recipe | What it does |
 |---|--------|--------------|
 | 01 | [Speech to text](06_muse_voice/01_voice_api_fundamentals/) | Transcribe a recording or a live microphone over the streaming WebSocket, get speaker-attributed turns with diarization, or post a whole recording in one HTTP request. |
+| 02 | [Voice-controlled Apple Chess](06_muse_voice/02_voice_chess_cua/) | Turn exact spoken chess moves into locally validated Apple Chess actions with a passive HUD, calibrated grid, dry-run mode, and fail-closed native input. |
 
 ## License
 

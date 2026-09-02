@@ -16,7 +16,7 @@
 Voice Chess turns a spoken utterance such as `Move E2 to E4` into a validated Apple Chess action. Muse Voice Transcribe supplies speech-turn detection, vocabulary biasing, and partial transcripts for a responsive voice experience. A deterministic local parser then accepts only the exact move grammar, with no second model request, and a macOS computer-use layer validates Chess through the Accessibility API, posts only the two approved clicks, and confirms that the move occurred.
 
 > [!IMPORTANT]
-> Execution is automatic and there is no wake phrase. Start with `--dry-run`, use headphones in a quiet environment, and keep one Apple Chess game window visible.
+> Execution is automatic and there is no wake phrase. Start with `--dry-run`, speak in a quiet environment, and keep one Apple Chess game window visible.
 
 ## Setup
 

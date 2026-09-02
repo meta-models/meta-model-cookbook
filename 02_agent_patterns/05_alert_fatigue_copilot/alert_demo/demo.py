@@ -6,7 +6,7 @@ Reads a synthetic alert feed, probes patterns, chats, and self-assesses.
 Canonical cookbook config (see CONTRIBUTING.md):
   SDK      OpenAI Python SDK (`from openai import OpenAI`)
   Base URL https://api.meta.ai/v1
-  Model    muse-spark-1.1
+  Model    muse-spark-1.3
   Key env  MODEL_API_KEY
 """
 
@@ -26,7 +26,7 @@ STATE = ROOT / "state"
 STATE.mkdir(exist_ok=True)
 
 BASE_URL = os.environ.get("MODEL_BASE_URL", "https://api.meta.ai/v1")
-MODEL = os.environ.get("MODEL_NAME", "muse-spark-1.1")
+MODEL = os.environ.get("MODEL_NAME", "muse-spark-1.3")
 
 if "MODEL_API_KEY" not in os.environ:
     print(

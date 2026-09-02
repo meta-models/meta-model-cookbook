@@ -124,7 +124,7 @@ func printUsage(toStderr: Bool = false) {
       metacua render <trace-id> [--inline] [--open]
 
       Default base URL: https://api.meta.ai/v1
-      Default model:    muse-spark-1.1
+      Default model:    muse-spark-1.3
       Default coords:   normalized (0-1000)
       Default screenshot scale: 1.0
       Default recent image limit: 5

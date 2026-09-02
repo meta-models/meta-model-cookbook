@@ -12,7 +12,7 @@ from .errors import CLIError
 from .llm import CoordSpace
 
 DEFAULT_BASE_URL = "https://api.meta.ai/v1"
-DEFAULT_MODEL = "muse-spark-1.1"
+DEFAULT_MODEL = "muse-spark-1.3"
 DEFAULT_SCREENSHOT_SCALE = 1.0
 DEFAULT_MAX_IMAGES = 5
 VALID_EFFORTS = ("low", "medium", "high", "xhigh", "max")

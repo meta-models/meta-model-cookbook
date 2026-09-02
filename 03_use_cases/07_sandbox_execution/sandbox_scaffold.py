@@ -13,7 +13,7 @@ Pipeline for the one task in task.json (a real SWE-bench instance):
   4. VERIFY    the agent re-runs the tests until they pass (may iterate)
   5. TEAR DOWN `docker rm -f` — the sandbox and everything in it is gone
 
-The model reaches muse-spark-1.1 directly over the ambient egress proxy; there is no
+The model reaches muse-spark-1.3 directly over the ambient egress proxy; there is no
 logging proxy. Its only powers over the world are the two tools below.
 
 Usage:
@@ -23,7 +23,7 @@ Usage:
 Env:
   MODEL_API_KEY   (required) bearer token for the model endpoint
   MODEL_BASE_URL  default https://api.meta.ai/v1
-  MODEL_NAME      default muse-spark-1.1
+  MODEL_NAME      default muse-spark-1.3
 """
 import argparse
 import base64
@@ -49,7 +49,7 @@ from swebench.harness.test_spec.test_spec import make_test_spec
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 WORKDIR = "/testbed"  # where every SWE-bench image checks out the repo
-DEFAULT_MODEL_NAME = "muse-spark-1.1"
+DEFAULT_MODEL_NAME = "muse-spark-1.3"
 
 # ---------------------------------------------------------------------------
 # terminal styling (screenshots look better with clear stage banners)
@@ -363,7 +363,7 @@ def main():
             msg = chat(messages)
             messages.append(msg)
             if msg.get("content"):
-                say(f"{YEL}muse-spark-1.1:{RST}")
+                say(f"{YEL}muse-spark-1.3:{RST}")
                 for para in msg["content"].strip().split("\n"):
                     for line in (textwrap.wrap(para, 96) or [""]):
                         print(f"  {line}")

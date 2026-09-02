@@ -1,6 +1,6 @@
 {
   "topic": "AI Agents in Production",
-  "model": "muse-spark-1.1",
+  "model": "muse-spark-1.3",
   "pipeline_duration_seconds": 136.2,
   "steps": {
     "research": {

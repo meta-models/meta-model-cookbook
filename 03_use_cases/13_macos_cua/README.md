@@ -4,7 +4,7 @@
 |---|---|
 | **Section** | [Use cases](https://dev.meta.ai/docs/cookbook#use-cases) |
 | **Time to complete** | ~15 min |
-| **Model** | `muse-spark-1.1` |
+| **Model** | `muse-spark-1.3` |
 | **Harness** | `metacua` — a native macOS computer-use CLI (Swift and Python implementations) |
 | **Prerequisites** | macOS 12+, a Meta API key, and either Swift 5.9+ or Python 3.9+; [series setup](../README.md) |
 
@@ -64,7 +64,7 @@ This recipe uses the same setup as every other cookbook recipe:
 | Setting | Value |
 |---------|-------|
 | Base URL | `https://api.meta.ai/v1` |
-| Model | `muse-spark-1.1` |
+| Model | `muse-spark-1.3` |
 | API key env var | `MODEL_API_KEY` (format `LLM\|{numeric_id}\|{secret}`) |
 
 The agent posts to `{base}/responses` (the Responses API) with `parallel_tool_calls: false` and

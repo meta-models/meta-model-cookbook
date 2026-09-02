@@ -10,7 +10,7 @@ SDK, the Anthropic SDK, and agent CLIs like OpenCode and Claude Code.
 Point your client at
 the Model API base URL, set your key, and keep the rest of your code. Each recipe is a
 self-contained, copy-paste starting point that proves a capability and gives you something to build
-on. The default model is **Muse Spark** (`muse-spark-1.1`), which has a 1,048,576-token context
+on. The default model is **Muse Spark** (`muse-spark-1.3`), which has a 1,048,576-token context
 window; the preview is free.
 
 ## Getting started
@@ -35,7 +35,7 @@ client = OpenAI(
 )
 
 response = client.chat.completions.create(
-    model="muse-spark-1.1",
+    model="muse-spark-1.3",
     messages=[{"role": "user", "content": "Hello, world!"}],
 )
 

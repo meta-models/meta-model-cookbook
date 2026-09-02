@@ -4,7 +4,7 @@
 |---|---|
 | **Section** | [Agent patterns](https://dev.meta.ai/docs/cookbook#agent-patterns) |
 | **Time to complete** | ~20 min |
-| **Model** | `muse-spark-1.1` |
+| **Model** | `muse-spark-1.3` |
 | **Harness** | OpenCode (also direct API via the OpenAI SDK) |
 | **Language** | Python |
 
@@ -80,7 +80,7 @@ Launch OpenCode with Muse Spark from the sample project:
 
 ```bash
 cd alert_demo
-opencode -m meta/muse-spark-1.1
+opencode -m meta/muse-spark-1.3
 ```
 
 For the direct-API path without OpenCode, export your key (the same one from the dashboard) and run the sample project directly:
@@ -184,7 +184,7 @@ A full captured run is saved at [`artifacts/demo_run.txt`](artifacts/demo_run.tx
 
 The loop and the strict-JSON contract are the same however you run it:
 
-- **OpenCode**: the primary harness in this recipe. `opencode -m meta/muse-spark-1.1`, then paste the prompts from [`prompt.md`](prompt.md), or run headless with `opencode run --format json`. Reasoning shows as a dimmed `Thought` block; the `Edit` tool requires an exact `oldString` match once.
+- **OpenCode**: the primary harness in this recipe. `opencode -m meta/muse-spark-1.3`, then paste the prompts from [`prompt.md`](prompt.md), or run headless with `opencode run --format json`. Reasoning shows as a dimmed `Thought` block; the `Edit` tool requires an exact `oldString` match once.
 - **Direct Python CLI**: `./run.sh` in `alert_demo` bypasses OpenCode and calls the Model API directly via the OpenAI SDK against `https://api.meta.ai/v1`. Good for API purists and CI, with the same prompts and the same strict-JSON contract.
 
 The safety contract is the same everywhere: identify existing text exactly once for edits, propose only (no external actions), and state a numeric value only if it appears in the digest.

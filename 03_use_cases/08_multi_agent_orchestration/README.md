@@ -4,7 +4,7 @@
 |---|---|
 | **Section** | [Use cases](https://dev.meta.ai/docs/cookbook#use-cases) |
 | **Time to complete** | ~45 min |
-| **Model** | `muse-spark-1.1` |
+| **Model** | `muse-spark-1.3` |
 | **Harness** | Hermes |
 | **Prerequisites** | macOS or Linux, `tmux`, `ffmpeg`, an Anthropic / OpenAI / Nous Portal API key, and ~6 GB free disk for the generated app |
 
@@ -53,7 +53,7 @@ When the installer asks for provider details:
 
 - **Base URL**: `https://api.meta.ai/v1`
 - **API mode**: 2 (Chat Completions)
-- **Model**: `muse-spark-1.1`
+- **Model**: `muse-spark-1.3`
 - **Context length**: 1048576
 - **Search backend**: `ddgs`
 
@@ -173,7 +173,7 @@ EOF
 Confirm everything wired correctly:
 
 ```bash
-hermes profile list                          # all four show "muse-spark-1.1"
+hermes profile list                          # all four show "muse-spark-1.3"
 hermes -p pm doctor                          # model reachable, gateway visible
 ```
 
@@ -206,7 +206,7 @@ The `pm` profile boots into the Hermes chat with the pm-orchestration skill prel
 
 *Screenshots throughout are from an actual run; because the model is non-deterministic, your results may differ.*
 
-![PM profile boots at muse-spark-1.1, receives the one-line brief, and starts its pm-orchestration skill](./assets/01-pm-boots.png)
+![PM profile boots at muse-spark-1.3, receives the one-line brief, and starts its pm-orchestration skill](./assets/01-pm-boots.png)
 
 The PM's first move is `clarify`, not implementation. It posts a multiple-choice menu, you pick an option (or "Other" for free text), and it loops until it has enough to write a brief.
 

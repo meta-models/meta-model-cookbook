@@ -4,7 +4,7 @@
 |---|---|
 | **Section** | [Use cases](https://dev.meta.ai/docs/cookbook#use-cases) |
 | **Time to complete** | ~20 min |
-| **Model** | `muse-spark-1.1` |
+| **Model** | `muse-spark-1.3` |
 | **Harness** | OpenCode + Cua computer-use MCP |
 | **Prerequisites** | [series setup](../README.md) |
 
@@ -170,7 +170,7 @@ Launch OpenCode with Muse Spark from your project directory:
 
 ```bash
 mkdir mines-demo && cd mines-demo
-opencode -m meta/muse-spark-1.1
+opencode -m meta/muse-spark-1.3
 ```
 
 ---

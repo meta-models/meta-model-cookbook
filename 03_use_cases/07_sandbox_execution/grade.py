@@ -22,7 +22,7 @@ def main():
     patch = open(f"{HERE}/pred.patch").read()
     preds = [{
         "instance_id": inst["instance_id"],
-        "model_name_or_path": "muse-spark-1.1",
+        "model_name_or_path": "muse-spark-1.3",
         "model_patch": patch,
     }]
     json.dump(preds, open(f"{HERE}/preds.json", "w"))
@@ -39,7 +39,7 @@ def main():
     ]
     subprocess.run(cmd, cwd=HERE)
 
-    report = f"{HERE}/muse-spark-1.1.{RUN_ID}.json"
+    report = f"{HERE}/muse-spark-1.3.{RUN_ID}.json"
     if os.path.exists(report):
         r = json.load(open(report))
         resolved = r.get("resolved_instances", 0)

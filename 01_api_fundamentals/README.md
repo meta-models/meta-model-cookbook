@@ -16,7 +16,7 @@ or key variable.
 |---------|-------|
 | SDK | OpenAI Python SDK (`from openai import OpenAI`) |
 | Base URL | `https://api.meta.ai/v1` |
-| Model | `muse-spark-1.1` |
+| Model | `muse-spark-1.3` |
 | API key env var | `MODEL_API_KEY` (format `LLM\|{numeric_id}\|{secret}`) |
 
 ```python

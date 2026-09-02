@@ -125,7 +125,7 @@ AGENT OPTIONS:
   metacua sessions [--limit N] [--id ID] [--json] [--history] [--path]
 
   Default base URL: https://api.meta.ai/v1
-  Default model:    muse-spark-1.1
+  Default model:    muse-spark-1.3
   Default syntax:   function (OpenAI tools). Use pyautogui for the OSWorld action space (screenshot aspect-fit into 1920x1080 with black letterbox bars, coords inverse-mapped back).
   Default coords:   normalized (0-1000)
   Default screenshot scale: 1.0

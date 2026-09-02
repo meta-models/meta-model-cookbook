@@ -4,7 +4,7 @@
 |---|---|
 | **Section** | [Use cases](https://dev.meta.ai/docs/cookbook#use-cases) |
 | **Time to complete** | ~15 min (read-only PR review, Phase 1) |
-| **Model** | `muse-spark-1.1` |
+| **Model** | `muse-spark-1.3` |
 | **Harness** | OpenCode + GitHub Actions |
 | **Prerequisites** | [series setup](../README.md) |
 
@@ -119,7 +119,7 @@ description: >-
   One or two sentences. This is also how the orchestrator decides to route to this
   agent, so write it as a capability statement.
 mode: all            # primary | subagent | all  (see below)
-model: model_api/muse-spark-1.1
+model: model_api/muse-spark-1.3
 tools:               # which built-in tools this agent may use
   read: true
   edit: false
@@ -238,7 +238,7 @@ description: >-
   issues; applies labels; asks for repro steps; redirects off-topic issues. Read-only
   on the codebase. Use for newly opened issues.
 mode: all
-model: model_api/muse-spark-1.1
+model: model_api/muse-spark-1.3
 tools:
   read: true
   grep: true
@@ -305,7 +305,7 @@ description: >-
   AI-slop detection. Reads changed files and runs read-only git; can post PR comments
   but never writes code, approves, or merges. Use to review opened/updated PRs.
 mode: all
-model: model_api/muse-spark-1.1
+model: model_api/muse-spark-1.3
 tools:
   read: true
   grep: true
@@ -378,7 +378,7 @@ description: >-
   Answer questions about using this project strictly from repo files, always with file
   citations. Read-only. Use when an issue or comment asks how to use something.
 mode: subagent
-model: model_api/muse-spark-1.1
+model: model_api/muse-spark-1.3
 tools:
   read: true
   grep: true
@@ -426,7 +426,7 @@ description: >-
   root cause from real code tracing, proposed fix, alternatives, testing plan).
   Read-only. Use for high-severity bugs that need a design before a fix.
 mode: subagent
-model: model_api/muse-spark-1.1
+model: model_api/muse-spark-1.3
 tools:
   read: true
   grep: true
@@ -482,7 +482,7 @@ description: >-
   open a PR. Has write/edit/bash (allowlisted to dev commands; no network). Use only
   for issues a maintainer has gated with the `agent-fix` label.
 mode: all
-model: model_api/muse-spark-1.1
+model: model_api/muse-spark-1.3
 tools:
   read: true
   grep: true
@@ -559,7 +559,7 @@ description: >-
   Scan open issues for staleness on a schedule, post a friendly warning, and apply a
   `stale` label. Read-only on code; uses gh to comment/label issues. No auto-close.
 mode: all
-model: model_api/muse-spark-1.1
+model: model_api/muse-spark-1.3
 tools:
   read: true
   grep: true
@@ -613,7 +613,7 @@ description: >-
   specialist (triage, review, qa, rfc, bugfix) fits, and delegates via the task tool.
   Use this as the entry agent for maintainer /oc and /opencode commands.
 mode: primary
-model: model_api/muse-spark-1.1
+model: model_api/muse-spark-1.3
 tools:
   task: true
   read: true
@@ -702,14 +702,14 @@ at run time. One file wires OpenCode to the Meta Model API — commit it to your
         "apiKey": "{env:MODEL_API_KEY}"
       },
       "models": {
-        "muse-spark-1.1": {
+        "muse-spark-1.3": {
           "name": "Muse Spark",
           "limit": { "context": 1048576, "output": 131072 }
         }
       }
     }
   },
-  "model": "model_api/muse-spark-1.1"
+  "model": "model_api/muse-spark-1.3"
 }
 ```
 
@@ -720,7 +720,7 @@ Notes that matter:
   `MODEL_API_KEY` you'd use with the OpenAI SDK.
 - **`{env:MODEL_API_KEY}`** reads the key from the environment at run time. The key is
   never written to the config or the repo.
-- **`model_api/muse-spark-1.1`** is the `provider/model` id every agent references in its
+- **`model_api/muse-spark-1.3`** is the `provider/model` id every agent references in its
   `model:` field, and the `"model"` default at the bottom. Switching the whole bot to a
   different Meta Model API model is a one-line change here.
 
@@ -752,7 +752,7 @@ as the project root — make sure it's at the repo (git) root.
 
 Each capability is a workflow in `.github/workflows/`. They all follow the same shape:
 `actions/checkout` (so the agent gets a real working tree) + the OpenCode GitHub Action
-(`anomalyco/opencode/github@latest`) with `model: model_api/muse-spark-1.1`, `use_github_token:
+(`anomalyco/opencode/github@latest`) with `model: model_api/muse-spark-1.3`, `use_github_token:
 true`, and an `agent:` input. The Action turns the GitHub event into a prompt, runs the
 agent in the checkout, and posts the result / opens a PR.
 
@@ -808,7 +808,7 @@ jobs:
           MODEL_API_KEY: ${{ secrets.MODEL_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          model: model_api/muse-spark-1.1
+          model: model_api/muse-spark-1.3
           agent: review
           use_github_token: true
           prompt: |
@@ -842,7 +842,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          model: model_api/muse-spark-1.1
+          model: model_api/muse-spark-1.3
           agent: triage
           use_github_token: true
           prompt: |
@@ -887,7 +887,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          model: model_api/muse-spark-1.1
+          model: model_api/muse-spark-1.3
           agent: repo-agent
           use_github_token: true
 ```
@@ -921,7 +921,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          model: model_api/muse-spark-1.1
+          model: model_api/muse-spark-1.3
           agent: bugfix
           use_github_token: true
           prompt: |
@@ -957,7 +957,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          model: model_api/muse-spark-1.1
+          model: model_api/muse-spark-1.3
           agent: stale
           use_github_token: true
           prompt: |

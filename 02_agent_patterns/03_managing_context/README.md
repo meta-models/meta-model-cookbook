@@ -4,7 +4,7 @@
 |---|---|
 | **Section** | [Agent patterns](https://dev.meta.ai/docs/cookbook#agent-patterns) |
 | **Time to complete** | ~30 min |
-| **Model** | `muse-spark-1.1` |
+| **Model** | `muse-spark-1.3` |
 | **Harness** | OpenCode |
 | **Prerequisites** | macOS or Linux, Node.js, OpenCode, and a Model API key |
 
@@ -65,7 +65,7 @@ The built-in Meta provider ships Muse Spark's context window, so OpenCode has a 
 
 The exact prompts are in [`prompt.md`](./prompt.md): an **initial spec** plus **three requirement changes**. Give them in order — the initial spec first, then each change only after the previous one is done and green — so the model has to refactor rather than pre-plan (if it saw the changes up front it would design for them and there would be no real refactoring).
 
-1. **Build the first version.** Start OpenCode (see [Configure](#configure-opencode-for-muse-spark-1.1)) in an empty project and paste the **initial prompt** from `prompt.md`. Let it run.
+1. **Build the first version.** Start OpenCode (see [Configure](#configure-opencode-for-muse-spark-1.3)) in an empty project and paste the **initial prompt** from `prompt.md`. Let it run.
    *Watch:* it creates a `STATE.md` (goal, decisions, task graph, file map) and keeps the test suite green as it builds. The context meter stays low.
 
 2. **Inject requirement change 1** (hierarchical backends) from `prompt.md`, only after the build is green.

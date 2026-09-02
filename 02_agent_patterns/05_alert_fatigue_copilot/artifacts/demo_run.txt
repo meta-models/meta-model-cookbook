@@ -1,5 +1,5 @@
 == Muse Spark Alert Probe ==
-model: muse-spark-1.1
+model: muse-spark-1.3
 Refined purpose: Reduce recurring 2-4am checkout/payments/inventory alerts and rebalance owner load away from alex to protect on-call focus time for BrewBean POS.
 Rationale: 66.7% recurrence and 66.7% overnight (2-4am) concentration, with 73.8% owner load on alex at 1.4 alerts/day, drives alert fatigue.
 Patterns:

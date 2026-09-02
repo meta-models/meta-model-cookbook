@@ -4,7 +4,7 @@
 |---|---|
 | **Section** | [Agent patterns](https://dev.meta.ai/docs/cookbook#agent-patterns) |
 | **Time to complete** | ~15 min |
-| **Model** | `muse-spark-1.1` |
+| **Model** | `muse-spark-1.3` |
 | **Harness** | OpenCode |
 
 ## Summary
@@ -118,7 +118,7 @@ Give OpenCode the failing test and let the loop run. From inside the sample
 project:
 
 ```bash
-opencode run -m meta/muse-spark-1.1 \
+opencode run -m meta/muse-spark-1.3 \
   "tests/test_pagination.py is failing. Read it and the implementation, fix the
    bug so the test passes, then run: uv run --with pytest pytest tests/test_pagination.py"
 ```
@@ -181,7 +181,7 @@ The async race fails deterministically: concurrent increments lose updates and t
 count comes out too low. Muse Spark fixes it by guarding the read-modify-write.
 
 ```bash
-opencode run -m meta/muse-spark-1.1 \
+opencode run -m meta/muse-spark-1.3 \
   "tests/test_async_counter.py is failing. Read it and the implementation, fix the
    race condition so the test passes, then run: uv run --with pytest pytest tests/test_async_counter.py"
 ```
@@ -210,7 +210,7 @@ Result: 5/5 fixed, average 7.6 turns (max 14), 0 doom loops. The target was at l
 The loop enforces one contract: one tool per turn, an observed result, and an
 objective oracle for "done". How that looks in OpenCode:
 
-- **OpenCode**: `opencode -m meta/muse-spark-1.1`. Reasoning shows as a dimmed `Thought` block; tools render as `Read`, `Edit`, and `bash` lines.
+- **OpenCode**: `opencode -m meta/muse-spark-1.3`. Reasoning shows as a dimmed `Thought` block; tools render as `Read`, `Edit`, and `bash` lines.
 
 ## Common failure modes
 

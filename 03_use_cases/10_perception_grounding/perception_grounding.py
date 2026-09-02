@@ -18,7 +18,7 @@ import time
 from openai import OpenAI
 from PIL import Image
 
-MODEL = os.environ.get("MODEL_NAME", "muse-spark-1.1")
+MODEL = os.environ.get("MODEL_NAME", "muse-spark-1.3")
 BASE_URL = os.environ.get("MODEL_BASE_URL", "https://api.meta.ai/v1")
 
 MAX_IMAGE_DIMENSION = 1280

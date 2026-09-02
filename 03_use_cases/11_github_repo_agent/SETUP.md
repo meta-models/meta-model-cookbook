@@ -79,7 +79,7 @@ Enable workflows in phases (copy each file into `.github/workflows/` when you're
 | 3 | `opencode-bugfix.yml` | issue labeled `agent-fix` | `contents/PRs: write` | medium |
 | — | `opencode-stale.yml` | weekly cron | `issues: write` | low |
 
-Start with **Phase 1** only. Each `*.yml` already sets `model: model_api/muse-spark-1.1`,
+Start with **Phase 1** only. Each `*.yml` already sets `model: model_api/muse-spark-1.3`,
 `use_github_token: true`, `persist-credentials: false`, and least-privilege job permissions.
 
 ## Step 5 — Test it

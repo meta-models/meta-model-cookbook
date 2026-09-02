@@ -4,7 +4,7 @@
 |---|---|
 | **Section** | [Use cases](https://dev.meta.ai/docs/cookbook#use-cases) |
 | **Time to complete** | ~20 min |
-| **Model** | `muse-spark-1.1` |
+| **Model** | `muse-spark-1.3` |
 | **Harness** | OpenCode |
 | **Prerequisites** | [series setup](../README.md) |
 
@@ -28,7 +28,7 @@ This recipe leans into that: point [OpenCode](https://opencode.ai/) at Muse Spar
 
 _Start screen from the same one-shot build: six selectable cube-pet characters, best-score persistence, keyboard/touch controls._
 
-1. An OpenCode setup pointed at `muse-spark-1.1` with `reasoning_effort=xhigh`.
+1. An OpenCode setup pointed at `muse-spark-1.3` with `reasoning_effort=xhigh`.
 2. An **`AGENTS.md`** that captures the load-bearing constraints (coordinate system, position-based collision, log drift, train spawn ordering).
 3. A **single structured one-shot prompt** — experience + tech constraints + acceptance criteria.
 4. A complete single-file Three.js game (`index.html`), served over HTTP and playable.
@@ -166,6 +166,6 @@ If the GLB assets aren't present the game falls back to procedural box meshes an
 
 ## References
 
-- **`muse-spark-1.1`** ([Model API docs](https://dev.meta.ai/docs)): OpenAI-compatible; point any OpenAI client at `https://api.meta.ai/v1`.
+- **`muse-spark-1.3`** ([Model API docs](https://dev.meta.ai/docs)): OpenAI-compatible; point any OpenAI client at `https://api.meta.ai/v1`.
 - **OpenCode** — [docs](https://opencode.ai) · [config schema](https://opencode.ai/config.json).
 - **Assets** — [Kenney](https://kenney.nl) Cube Pets, Car Kit, and Train Kit, all under [CC0 1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/) (public domain; no attribution required, appreciated). Download them from Kenney; this recipe does not redistribute them.

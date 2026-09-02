@@ -1,6 +1,6 @@
 # The Prompt We Used
 
-This recipe is grounded in one real OpenCode run against `muse-spark-1.1`. This file is the exact prompting we used, so the run is reproducible and it is clear what we asked the model to do.
+This recipe is grounded in one real OpenCode run against `muse-spark-1.3`. This file is the exact prompting we used, so the run is reproducible and it is clear what we asked the model to do.
 
 The shape matters: the model is given the **initial spec first** and builds the whole thing. Each **requirement change is then injected one at a time, only after the previous one is done and green** — never revealed in advance. That is deliberate: if the model could see the changes up front it would pre-design for them, and there would be no real refactoring. Surfacing each change late forces it to revisit and rework decisions it already made.
 

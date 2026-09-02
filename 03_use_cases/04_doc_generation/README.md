@@ -4,7 +4,7 @@
 |---|---|
 | **Section** | [Use cases](https://dev.meta.ai/docs/cookbook#use-cases) |
 | **Time to complete** | ~20 min |
-| **Model** | `muse-spark-1.1` |
+| **Model** | `muse-spark-1.3` |
 | **Language** | Python |
 
 A multimodal agent recipe. Given a topic, the model uses the Model API's built-in web search tool (`tools=[{"type": "web_search"}]`) to research it via the Responses API, synthesizes the findings into a structured outline, and generates a reveal.js slide deck. The model controls both content and design.
@@ -62,5 +62,5 @@ See `examples/` for a pre-generated example deck, stats, and slide screenshot.
 ## Environment variables
 
 - `MODEL_API_KEY` - required for all pipeline runs
-- `META_MODEL` - model name, defaults to `muse-spark-1.1`
+- `META_MODEL` - model name, defaults to `muse-spark-1.3`
 - `META_BASE_URL` - API endpoint, defaults to `https://api.meta.ai/v1`

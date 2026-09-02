@@ -15,7 +15,7 @@
 > 5. **Require your own confirmation for anything consequential** — purchases, sending messages, deleting files, accepting terms, or any action with real-world effects.
 
 > [!NOTE]
-> `metacua` defaults to the `muse-spark-1.1` model against `https://api.meta.ai/v1`, using normalized `0...1000` coordinates and a selectable effort level (`low`, `medium`, `high`, `xhigh`, `max`). Override any of these per run with flags, per shell with environment variables, or persistently with `metacua configure`.
+> `metacua` defaults to the `muse-spark-1.3` model against `https://api.meta.ai/v1`, using normalized `0...1000` coordinates and a selectable effort level (`low`, `medium`, `high`, `xhigh`, `max`). Override any of these per run with flags, per shell with environment variables, or persistently with `metacua configure`.
 
 
 ## Tools
@@ -94,10 +94,10 @@ Save your API key once:
 make configure ARGS="--api-key LLM_..."
 ```
 
-Configuration precedence is command flags, then environment variables, then `~/.metacua/config.json`, then defaults (existing configs under `~/.config/metacua/config.json` are still read as a fallback). The defaults are the `muse-spark-1.1` model against `https://api.meta.ai/v1`, normalized 0-1000 coordinates, `high` effort, screenshot scale `1.0`, recent image limit `5`, and batched actions off. Override any of them when saving:
+Configuration precedence is command flags, then environment variables, then `~/.metacua/config.json`, then defaults (existing configs under `~/.config/metacua/config.json` are still read as a fallback). The defaults are the `muse-spark-1.3` model against `https://api.meta.ai/v1`, normalized 0-1000 coordinates, `high` effort, screenshot scale `1.0`, recent image limit `5`, and batched actions off. Override any of them when saving:
 
 ```sh
-make configure ARGS="--api-key LLM_... --model muse-spark-1.1 --coords normalized --effort high --screenshot-scale 1.0 --max-images 5"
+make configure ARGS="--api-key LLM_... --model muse-spark-1.3 --coords normalized --effort high --screenshot-scale 1.0 --max-images 5"
 ```
 
 Add `--batched-actions` to persist batched tool mode, or `--no-batched-actions` to turn it back off.

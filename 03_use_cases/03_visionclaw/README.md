@@ -4,7 +4,7 @@
 |---|---|
 | **Section** | [Use cases](https://dev.meta.ai/docs/cookbook#use-cases) |
 | **Time to complete** | ~30 min |
-| **Model** | `muse-spark-1.1` |
+| **Model** | `muse-spark-1.3` |
 | **Harness** | OpenClaw |
 | **Prerequisites** | [series setup](../README.md) |
 
@@ -34,7 +34,7 @@ _Glasses mode: the user asks for a shopping link for the Ray-Ban Meta glasses in
 1. **Capture** — one high-res JPEG from the glasses (or the iPhone camera).
 2. **Listen** — your question is transcribed on-device (`SFSpeechRecognizer`).
 3. **Ask** — the app sends *one* chat turn (text + image) to your gateway as `openclaw/default`. No model key, no tools.
-4. **Think** — the gateway runs its agent loop against Meta's Model API (`meta/muse-spark-1.1`, vision) plus its skills, and returns final text.
+4. **Think** — the gateway runs its agent loop against Meta's Model API (`meta/muse-spark-1.3`, vision) plus its skills, and returns final text.
 5. **Speak** — the answer is spoken back on-device (`AVSpeechSynthesizer`).
 
 ## Quick start
@@ -45,7 +45,7 @@ OpenClaw ships built-in support for the **Meta** provider, and `Muse Spark 1.1` 
 
 ```json5
 {
-  agents: { defaults: { model: { primary: "meta/muse-spark-1.1" } } },
+  agents: { defaults: { model: { primary: "meta/muse-spark-1.3" } } },
   gateway: {
     mode: "local",
     port: 18789,
@@ -97,7 +97,7 @@ _Left: grant camera access in the Meta AI app · Right: confirm the connection i
 
 ## Why the app stays thin
 
-- **`model: "openclaw/default"`** targets an *agent*, not a provider model — the gateway resolves the real model (`meta/muse-spark-1.1`) from its config.
+- **`model: "openclaw/default"`** targets an *agent*, not a provider model — the gateway resolves the real model (`meta/muse-spark-1.3`) from its config.
 - **No `tools` array is ever sent** — the gateway runs its skills internally and returns finished text.
 - **Model choice, skills, and safety** all live in one place you control: the gateway.
 

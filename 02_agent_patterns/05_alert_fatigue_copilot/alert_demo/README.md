@@ -23,7 +23,7 @@ python3 validate_alert_output.py --probe artifacts/probe_example.json --assess a
 
 ## Structure
 
-- `demo.py` — Meta Model API Responses call via the OpenAI SDK (`https://api.meta.ai/v1`, model `muse-spark-1.1`)
+- `demo.py` — Meta Model API Responses call via the OpenAI SDK (`https://api.meta.ai/v1`, model `muse-spark-1.3`)
 - `prompts/` — probe, chat, self-assess system prompts
 - `data/synthetic_alerts.json` — 42 synthetic alerts .example domains only
 - `state/` — written at runtime, gitignored

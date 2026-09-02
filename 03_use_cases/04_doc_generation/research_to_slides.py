@@ -15,7 +15,7 @@ import time
 
 from openai import OpenAI
 
-MODEL = os.environ.get("META_MODEL", "muse-spark-1.1")
+MODEL = os.environ.get("META_MODEL", "muse-spark-1.3")
 BASE_URL = os.environ.get("META_BASE_URL", "https://api.meta.ai/v1")
 
 

@@ -4,7 +4,7 @@
 |---|---|
 | **Section** | [Use cases](https://dev.meta.ai/docs/cookbook#use-cases) |
 | **Time to complete** | ~10 min |
-| **Model** | `muse-spark-1.1` |
+| **Model** | `muse-spark-1.3` |
 | **Language** | Python |
 
 Ever wondered what in your fridge is actually good for you? This recipe takes a photo of your fridge, sends it to Muse Spark in a single API call, and gets back an interactive HTML page with color-coded dots on each food item. Green means "eat up," red means "maybe skip this one." Hover over any dot for the full story - why it's recommended (or not), a health score, and a nutrition breakdown.
@@ -111,5 +111,5 @@ open examples/food_in_fridge_grounded.html
 ## Environment variables
 
 - `MODEL_API_KEY` - required
-- `MODEL_NAME` - model name, defaults to `muse-spark-1.1`
+- `MODEL_NAME` - model name, defaults to `muse-spark-1.3`
 - `MODEL_BASE_URL` - API endpoint, defaults to `https://api.meta.ai/v1`

@@ -4,7 +4,7 @@
 |---|---|
 | **Section** | [Use cases](https://dev.meta.ai/docs/cookbook#use-cases) |
 | **Time to complete** | ~30 min |
-| **Model** | `muse-spark-1.1` |
+| **Model** | `muse-spark-1.3` |
 | **Harness** | OpenCode + Playwright browser MCP |
 | **Prerequisites** | [series setup](../README.md) |
 
@@ -127,7 +127,7 @@ Launch OpenCode with Muse Spark 1.1 from your project directory:
 
 ```bash
 mkdir space-racer && cd space-racer
-opencode -m meta/muse-spark-1.1
+opencode -m meta/muse-spark-1.3
 ```
 
 ---

@@ -12,7 +12,7 @@ struct AgentConfig {
   var batchedActions: Bool
 
   static let defaultBaseURL = "https://api.meta.ai/v1"
-  static let defaultModel = "muse-spark-1.1"
+  static let defaultModel = "muse-spark-1.3"
   static let defaultScreenshotScale = 1.0
   static let defaultMaxImages = 5
   static let defaultBatchedActions = false

@@ -4,7 +4,7 @@
 |---|---|
 | **Section** | [Use cases](https://dev.meta.ai/docs/cookbook#use-cases) |
 | **Time to complete** | ~30 min |
-| **Model** | `muse-spark-1.1` |
+| **Model** | `muse-spark-1.3` |
 | **Harness** | OpenClaw |
 | **Prerequisites** | [series setup](../README.md) |
 
@@ -33,16 +33,16 @@ This recipe ships a sample chart at [`assets/chart.png`](./assets/chart.png): a 
 
 ## How it works
 
-The key fact that shapes the whole recipe: **Muse Spark is multimodal in, text out**. Per the [Model API factsheet](https://dev.meta.ai/docs), `muse-spark-1.1` accepts text, image, video, and PDF and returns **text**. It understands the chart; it does not draw one. So the pipeline is:
+The key fact that shapes the whole recipe: **Muse Spark is multimodal in, text out**. Per the [Model API factsheet](https://dev.meta.ai/docs), `muse-spark-1.3` accepts text, image, video, and PDF and returns **text**. It understands the chart; it does not draw one. So the pipeline is:
 
 ```
-chart image ──► muse-spark-1.1 (image understanding) ──► text + structured JSON ──► a tool renders the visual
+chart image ──► muse-spark-1.3 (image understanding) ──► text + structured JSON ──► a tool renders the visual
                          the model is the brain                              the viz is just presentation
 ```
 
 Three Model API capabilities chain here, each with its own doc:
 
-- **[Image understanding](https://dev.meta.ai/docs)**: the chart goes in as image content on a `user` message (or via `infer ... --file`). Verified working with `meta/muse-spark-1.1`.
+- **[Image understanding](https://dev.meta.ai/docs)**: the chart goes in as image content on a `user` message (or via `infer ... --file`). Verified working with `meta/muse-spark-1.3`.
 - **[Structured output](https://dev.meta.ai/docs)**: `response_format` with a JSON schema constrains decoding so the response matches the schema. It guarantees the *shape*, not that the model read the chart correctly (see Step 2 and Step 3).
 - **Tool calling / the agent loop**: OpenClaw turns the structured analysis into a rendered visual via the `canvas` tool or an `exec` re-render.
 
@@ -50,7 +50,7 @@ Because the model outputs text, the visual is a downstream render of the model's
 
 ## Step 0: setup
 
-OpenClaw ships built-in support for the **Meta** provider, and `muse-spark-1.1` is vision-capable — confirm the [series foundation](../README.md) is connected (Meta provider selected), then put the bundled sample chart where the recipe expects it:
+OpenClaw ships built-in support for the **Meta** provider, and `muse-spark-1.3` is vision-capable — confirm the [series foundation](../README.md) is connected (Meta provider selected), then put the bundled sample chart where the recipe expects it:
 
 ```bash
 export MODEL_API_KEY="your-key-here"
@@ -64,7 +64,7 @@ cp assets/chart.png ~/chart-demo/charts/chart.png
 Smoke-test vision on it:
 
 ```bash
-openclaw infer model run --local --model meta/muse-spark-1.1 \
+openclaw infer model run --local --model meta/muse-spark-1.3 \
   --file ~/chart-demo/charts/chart.png \
   --prompt "In one sentence, what does this image show?" --json
 ```
@@ -79,7 +79,7 @@ If it identifies it as a price/stock chart for NEXA, vision is wired correctly. 
       {
         id: "chartdemo",
         workspace: "~/chart-demo",
-        model: "meta/muse-spark-1.1",
+        model: "meta/muse-spark-1.3",
         tools: { alsoAllow: ["canvas"] },
       },
     ],
@@ -125,7 +125,7 @@ The agent reads the chart, writes `analysis.json`, **exec**s `render-summary.py`
 Start with the raw probe so you can see the model's reading without tools or session noise. The prompt does the explain-only enforcement:
 
 ```bash
-openclaw infer model run --local --model meta/muse-spark-1.1 \
+openclaw infer model run --local --model meta/muse-spark-1.3 \
   --file ~/chart-demo/charts/chart.png \
   --prompt "Help me understand this chart. Describe ONLY what is visible: instrument, timeframe, overall trend, approximate support and resistance levels, percent change across the visible range, notable volume, and any labeled patterns or indicators. State a value only if you can read it; say 'not readable' otherwise. Do NOT give buy/sell advice or price predictions." \
   --json
@@ -297,6 +297,6 @@ Session continuity means the model still has the chart and prior analysis in con
 
 ## References
 
-- **`muse-spark-1.1`** ([Model API docs](https://dev.meta.ai/docs)): input text/image/video/PDF, **output text**; up to 50 MB inline, ~50 images per request. No image generation — the API does not produce media.
+- **`muse-spark-1.3`** ([Model API docs](https://dev.meta.ai/docs)): input text/image/video/PDF, **output text**; up to 50 MB inline, ~50 images per request. No image generation — the API does not produce media.
 - **Structured output**: `response_format` with `json_schema` (Chat Completions); use `strict: true` + `additionalProperties: false`. `image_url` is fetched server-side, so pass a public URL or inline a `data:` URI.
 - **OpenClaw**: [`infer`](https://docs.openclaw.ai/cli/infer), [`agent`](https://docs.openclaw.ai/cli/agent), [Live Canvas](https://docs.openclaw.ai/platforms/mac/canvas), [Model providers](https://docs.openclaw.ai/concepts/model-providers).

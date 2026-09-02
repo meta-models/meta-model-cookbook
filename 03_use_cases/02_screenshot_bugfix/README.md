@@ -8,7 +8,7 @@ This recipe shows how Muse Spark reads a screenshot of a buggy UI (via the OpenC
 |---|---|
 | **Section** | [Use cases](https://dev.meta.ai/docs/cookbook#use-cases) |
 | **Time to complete** | under 30 minutes |
-| **Model** | `muse-spark-1.1` |
+| **Model** | `muse-spark-1.3` |
 | **Prerequisites** | Python 3.10+, `OpenCode` CLI, and a `MODEL_API_KEY` (create one in the [Model API dashboard](https://dev.meta.ai/)). |
 
 ## Configure OpenCode For Muse Spark

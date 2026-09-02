@@ -15,7 +15,7 @@
 | --- | --- |
 | Section | Use cases |
 | Time to complete | ~15 min |
-| Model | `muse-spark-1.1` |
+| Model | `muse-spark-1.3` |
 | Prerequisites | macOS 12+, Python 3.9+, a Meta API key (`MODEL_API_KEY`) |
 
 For an isolated, cross-platform variant, see the OpenCode + Cua recipe in this
@@ -138,7 +138,7 @@ Persist optional settings when needed:
 metacua configure \
   --api-key LLM_... \
   --base-url https://api.meta.ai/v1 \
-  --model muse-spark-1.1 \
+  --model muse-spark-1.3 \
   --syntax function \
   --coords normalized \
   --effort high \
@@ -154,7 +154,7 @@ Resolution order is flags → environment → config file → defaults.
 | --- | --- | --- | --- | --- |
 | API key | `--api-key` | `MODEL_API_KEY`, `MUSE_SPARK_API_KEY` | `apiKey` | required |
 | Base URL | `--base-url` | `LLM_BASE_URL`, `MUSE_SPARK_BASE_URL` | `baseURL` | `https://api.meta.ai/v1` |
-| Model | `--model` | `LLM_MODEL`, `MUSE_SPARK_MODEL` | `model` | `muse-spark-1.1` |
+| Model | `--model` | `LLM_MODEL`, `MUSE_SPARK_MODEL` | `model` | `muse-spark-1.3` |
 | Effort | `--effort` | `LLM_EFFORT` | `effort` | `high` |
 | Syntax | `--syntax` | `LLM_SYNTAX` | `syntax` | `function` |
 | Screenshot scale | `--screenshot-scale` | `METACUA_SCREENSHOT_SCALE`, `LLM_SCREENSHOT_SCALE` | `screenshotScale` | `1.0` |
@@ -193,7 +193,7 @@ Common options:
 ```sh
 metacua agent \
   --goal "Open Notes and write today's date" \
-  --model muse-spark-1.1 \
+  --model muse-spark-1.3 \
   --base-url https://api.meta.ai/v1 \
   --api-key LLM_... \
   --coords normalized \
@@ -229,7 +229,7 @@ Function-calling mode calls `POST {base}/responses` with a body shaped like:
 
 ```json
 {
-  "model": "muse-spark-1.1",
+  "model": "muse-spark-1.3",
   "instructions": "...system prompt...",
   "input": [
     {

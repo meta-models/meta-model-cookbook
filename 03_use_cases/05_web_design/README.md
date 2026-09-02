@@ -4,7 +4,7 @@
 |---|---|
 | **Section** | [Use cases](https://dev.meta.ai/docs/cookbook#use-cases) |
 | **Time to complete** | ~30 min |
-| **Model** | `muse-spark-1.1` |
+| **Model** | `muse-spark-1.3` |
 | **Harness** | OpenCode + Playwright browser MCP |
 | **Prerequisites** | [series setup](../README.md) |
 
@@ -128,7 +128,7 @@ From the directory you want the site created in:
 
 ```bash
 mkdir mesh-site && cd mesh-site
-opencode -m meta/muse-spark-1.1
+opencode -m meta/muse-spark-1.3
 ```
 
 The model name in the bottom bar should read **Muse Spark 1.1 · Meta**, and the footer should show

@@ -8,7 +8,7 @@
 | **Language** | Python |
 | **Platform** | macOS with Apple Chess |
 
-[![Voice Chess recognizes a spoken move and overlays a validated grid on Apple Chess](assets/voice-cua-chess-poster.jpg)](assets/voice-cua-chess.mp4)
+https://github.com/user-attachments/assets/0a29483f-f53b-4c17-81a3-a654a0277ad1
 
 **[Watch the 50-second Voice Chess demo](assets/voice-cua-chess.mp4)**
 

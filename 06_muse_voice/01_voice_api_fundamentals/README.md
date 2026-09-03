@@ -33,6 +33,8 @@ Both scripts take the same input: a **mono 16-bit WAV** at 24 kHz (engine-native
 ffmpeg -i input.mp3 -ac 1 -ar 24000 -sample_fmt s16 sample.wav
 ```
 
+Add a recording to this folder and pass its filename to the script. The filenames below are placeholders for your own.
+
 ## Stream a recording
 
 ```bash
@@ -41,10 +43,10 @@ python transcribe_stream.py sample.wav
 
 ```
 session 89465FD9A818F4B89CBA1501C4A4C1BC
-Where is the capital of Switzerland?
+I fixed the bug. By fixed, I mean I can no longer reproduce it.
 ```
 
-Watch it live and the transcript builds and revises itself: `Where` → `Where is the` → `Where is the capital of` → `Where is the capital of Switzerland?`
+Watch it live and the transcript builds and revises itself: `I fixed the bug` → `I fixed the bug. By fixed` → `I fixed the bug. By fixed, I mean I can no` → `I fixed the bug. By fixed, I mean I can no longer reproduce it.`
 
 Partials are **cumulative** — each one replaces the last, so render in place rather than appending. The `final: true` frame is the completion signal.
 

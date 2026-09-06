@@ -20,7 +20,8 @@ End-to-end patterns: multimodal perception, orchestration, and full applications
 | [11](11_github_repo_agent/) | GitHub repo agent | Autonomous GitHub Actions bot — triage, PR review, AI-slop detection, and bug-fix PRs — built on OpenCode + Muse Spark. |
 | [12](12_computer_use/) | Computer use | Drive a Linux desktop from screenshots — the agent finds an app, opens it, and plays it, clicking through a Cua sandbox. |
 | [13](13_macos_cua/) | macOS computer use | Drive a real Mac from screenshots with `metacua`, a native computer-use agent (Swift + Python) that clicks, types, and works out a GUI app on its own. |
+| [14](14_background_computer_use/) | Background computer use | Use Muse models and Cua Driver to operate a background app while another app remains active. |
 
 Recipes 01–05 and 07 map to live website tiles; 06 (iterative game dev), 08 (multi-agent
 product studio), 09 (one-shot game dev), 10 (perception grounding), 11 (GitHub repo agent),
-12 (computer use), and 13 (macOS computer use) are in-repo recipes with no live tile.
+12 (computer use), 13 (macOS computer use), and 14 (background computer use) are in-repo recipes with no live tile.

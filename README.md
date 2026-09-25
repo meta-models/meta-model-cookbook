@@ -113,6 +113,7 @@ Build agents with sessions you can audit, safety that fails closed, and an agent
 | 08 | [Bundled skills: a paved road from idea to shipped](04_muse_code/08_bundled_skills/) | Drive the built-in `/plan`, `/grilling`, `/grill-with-docs`, and `/taste` skills end to end — plan a change, stress-test it, record the decisions, and build UI that does not look AI-made. |
 | 09 | [Loop and cron: scheduled agent work](04_muse_code/09_loop_and_cron/) | Schedule recurring or one-time agent work in natural language, then view, change, or cancel it from the same chat surface. |
 | 10 | [Multi-turn side chats](04_muse_code/10_side_chats/) | Branch a multi-turn side conversation off a busy main thread with `/side` (or its alias `/btw`), isolated from the main transcript. |
+| 11 | [Security research over MCP](04_muse_code/11_mcp_security_tooling/) | Wire Burp Suite, headless Ghidra and LLDB into Muse Code over MCP, then point it at a deliberately vulnerable web server and a real CVE in a stripped binary and watch how it works. |
 
 ### [5. Muse Image](05_muse_image/)
 

@@ -16,3 +16,4 @@ Recipes for building with [Muse Code](https://dev.meta.ai/docs/cookbook#building
 | [08](08_bundled_skills/) | Bundled skills: plan, pressure-test, and build | Drive the built-in `/plan`, `/grilling`, `/grill-with-docs`, and `/taste` skills end to end: plan a change, pressure-test it, record the decisions, and build UI that doesn't look AI-made. |
 | [09](09_loop_and_cron/) | Loop and cron: scheduled agent work | Schedule recurring or one-time agent work in natural language, then view, change, or cancel it from the same chat surface. |
 | [10](10_side_chats/) | Multi-turn side chats | Branch a multi-turn side conversation off a busy main thread with `/side` (or its alias `/btw`), isolated from the main transcript. |
+| [11](11_mcp_security_tooling/) | Security research over MCP | Wire Burp Suite, headless Ghidra and LLDB into Muse Code over MCP, then point it at a deliberately vulnerable web server and a real CVE in a stripped binary and watch how it works. |

@@ -96,6 +96,7 @@ End-to-end patterns: multimodal perception, orchestration, and full applications
 | 11 | [GitHub repo agent](03_use_cases/11_github_repo_agent/) | Autonomous GitHub Actions bot — triage, PR review, AI-slop detection, and bug-fix PRs — built on OpenCode + Muse Spark. |
 | 12 | [Computer use](03_use_cases/12_computer_use/) | Drive a Linux desktop from screenshots — the agent finds an app, opens it, and plays it, clicking through a Cua sandbox. |
 | 13 | [macOS computer use](03_use_cases/13_macos_cua/) | Drive a real Mac from screenshots with `metacua`, a native computer-use agent (Swift + Python) that clicks, types, and works out a GUI app on its own. |
+| 14 | [Background computer use](03_use_cases/14_background_computer_use/) | Use Muse models and Cua Driver to operate a background app across desktop platforms, with explicit verification and platform limits. |
 
 ### [4. Muse Code](04_muse_code/)
 

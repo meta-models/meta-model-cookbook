@@ -176,7 +176,12 @@ export class ReverseProxy {
       signal?.throwIfAborted();
       const ok = await attempt(i, tried);
       if (ok) return;
-      if (i < this.retries && canRetryBody) await new Promise(r => setTimeout(r, 10 * (i + 1)));
+      if (!canRetryBody) {
+        break;
+      }
+      if (i < this.retries) {
+        await new Promise(r => setTimeout(r, 10 * (i + 1)));
+      }
     }
     if (!res.headersSent) {
       res.writeHead(502, { "content-type": "text/plain" });

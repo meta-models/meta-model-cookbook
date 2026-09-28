@@ -76,6 +76,7 @@ Build the loops that turn a model into an agent: planning, parallel work, and se
 | 03 | [Multi-turn context management](02_agent_patterns/03_managing_context/) | Manage growing context across a long agent run. |
 | 04 | [Validated in-place edits](02_agent_patterns/04_validated_in_place_edits/) | Validated search-and-replace edits with a coding agent. |
 | 05 | [Alert fatigue copilot](02_agent_patterns/05_alert_fatigue_copilot/) | Extract grounded patterns from a noisy alert feed, then probe → chat → self-assess with strict-JSON output. |
+| 06 | [Graph-grounded repository explanations](02_agent_patterns/06_graph_grounded_explanations/) | Answer from a directed repository graph and validate referenced evidence paths. |
 
 ### [3. Use cases](03_use_cases/)
 

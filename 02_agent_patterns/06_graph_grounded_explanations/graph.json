@@ -1,0 +1,17 @@
+{
+  "nodes": [
+    {"id": "cli", "label": "CLI analysis command", "kind": "function", "summary": "Accepts a repository analysis request."},
+    {"id": "engine", "label": "Analysis engine", "kind": "module", "summary": "Coordinates repository analysis."},
+    {"id": "reader", "label": "Repository reader", "kind": "module", "summary": "Reads source files and returns parsed inputs."},
+    {"id": "parser", "label": "Symbol parser", "kind": "function", "summary": "Extracts declarations from source text."},
+    {"id": "graph", "label": "Graph builder", "kind": "function", "summary": "Creates nodes and dependency edges from parsed declarations."},
+    {"id": "answer", "label": "Question answerer", "kind": "module", "summary": "Uses the graph as context when answering repository questions."}
+  ],
+  "edges": [
+    {"from": "cli", "to": "engine", "relation": "calls"},
+    {"from": "engine", "to": "reader", "relation": "calls"},
+    {"from": "reader", "to": "parser", "relation": "calls"},
+    {"from": "parser", "to": "graph", "relation": "feeds"},
+    {"from": "graph", "to": "answer", "relation": "supplies_context_to"}
+  ]
+}

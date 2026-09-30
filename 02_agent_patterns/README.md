@@ -13,7 +13,8 @@ work, and self-correction.
 | [03](03_managing_context/) | Multi-turn context management | Manage growing context across a long agent run. |
 | [04](04_validated_in_place_edits/) | Validated in-place edits | Validated search-and-replace in-place edits with a coding agent. |
 | [05](05_alert_fatigue_copilot/) | Alert fatigue copilot | Extract grounded patterns from a noisy alert feed, then probe → chat → self-assess with strict-JSON output. |
+| [06](06_graph_grounded_explanations/) | Graph-grounded repository explanations | Return graph-path citations and validate referenced nodes and directed edges. |
 
 Recipes 01–03 map to live website tiles (*Basic agent loop*, *Interleaved reasoning and
-tool use*, *Multi-turn context management*). 04–05 are in-repo recipes with no live tile
+tool use*, *Multi-turn context management*). 04–06 are in-repo recipes with no live tile
 (04 is from the retired `first-contact` section).

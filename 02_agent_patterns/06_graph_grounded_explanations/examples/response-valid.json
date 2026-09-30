@@ -1,0 +1,8 @@
+{
+  "answer": "The CLI forwards the analysis request to the engine, which reads the repository and parses symbols. The graph builder turns parsed declarations into dependency edges, and the answerer uses that graph as context.",
+  "claims": [
+    {"text": "The CLI calls the analysis engine.", "evidence_paths": [["cli", "engine"]]},
+    {"text": "The engine reads the repository and invokes the symbol parser.", "evidence_paths": [["engine", "reader", "parser"]]},
+    {"text": "The parser feeds the graph builder, which supplies context to the answerer.", "evidence_paths": [["parser", "graph", "answer"]]}
+  ]
+}

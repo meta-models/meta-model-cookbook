@@ -1,0 +1,1 @@
+How does a repository question travel from the CLI to an answer that can cite dependencies? Explain the components in order and return one evidence path for each claim.

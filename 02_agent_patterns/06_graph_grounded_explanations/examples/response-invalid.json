@@ -1,0 +1,6 @@
+{
+  "answer": "The scheduler writes back to a database.",
+  "claims": [
+    {"text": "The scheduler writes to a database.", "evidence_paths": [["scheduler", "database"]]}
+  ]
+}

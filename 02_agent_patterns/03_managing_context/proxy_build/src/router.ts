@@ -17,7 +17,12 @@ export class Router {
     this.routes.sort((a, b) => {
       const ap = a.pathPrefix?.length ?? 0;
       const bp = b.pathPrefix?.length ?? 0;
-      return bp - ap;
+      if (ap !== bp) {
+        return bp - ap;
+      }
+      const ah = a.host ? 1 : 0;
+      const bh = b.host ? 1 : 0;
+      return bh - ah;
     });
   }
 

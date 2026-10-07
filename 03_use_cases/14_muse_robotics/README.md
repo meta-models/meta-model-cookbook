@@ -256,20 +256,10 @@ No job is submitted until the kiosk receives a print action and the operator typ
 - Raw source-image bytes are not persisted by the full-demo workflow.
 - Outputs use a random session namespace. Only current registered files are downloadable, replacement removes the older file, reset removes current files, and startup removes recipe-created session directories after 24 hours.
 - The optional YuNet gate requires a separately sourced and licensed model file; none is bundled.
-- The optional SAM and Reachy adapters use dependency injection and lazy imports, so base tests need neither model weights nor hardware.
+- The optional SAM and Reachy adapters use dependency injection and lazy imports, so the default offline path needs neither model weights nor hardware.
 - Physical motion and printing require explicit flags and supervised testing.
 
-## Test everything offline
-
-```bash
-python -m unittest discover -s tests -p 'test_*.py' -v
-ruff check .
-ruff format --check .
-```
-
-The suite covers planner validation, MuJoCo postconditions, Bearer-authenticated/final-only voice contracts, image-response and pixel-bound validation, hosted and fixture SAM parsing, Reachy motor gating and media conversion, same-origin kiosk authorization, single-flight and reset behavior, registered-output cleanup, exact print routing, postcard dimensions, and confirmed/deduplicated CUPS submission.
-
-For an explicit end-to-end smoke test:
+## Run an end-to-end smoke test
 
 ```bash
 MUJOCO_GL=egl python run_full_demo.py \
@@ -295,7 +285,6 @@ MUJOCO_GL=egl python run_full_demo.py \
 │   ├── server.py                    # loopback-only stdlib kiosk server
 │   └── static/index.html            # no-build kiosk UI
 ├── plans/                            # deterministic plan fixtures
-├── tests/                            # unit, contract, HTTP, and physics tests
 ├── assets/                           # public-safe generated media and provenance
 ├── panda.xml, scene.xml              # full-mesh Panda and working-demo scene
 ├── third_party/franka_panda/assets/  # Apache-2.0 visual/collision meshes

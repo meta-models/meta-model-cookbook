@@ -34,4 +34,4 @@ These generated robot images replace the earlier face-like offline fixture in al
 
 ## Original recipe diagrams
 
-- `architecture.svg` and `full_demo_flow.svg` are original vector diagrams authored for this recipe.
+- `full_demo_flow.svg` is an original vector diagram authored for this recipe.

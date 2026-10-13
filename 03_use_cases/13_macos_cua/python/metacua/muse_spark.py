@@ -158,29 +158,44 @@ class MuseSparkBackend(LLMBackend):
         self, runs: List[ToolRun], screenshot, notes: Optional[List[str]] = None
     ) -> List[Dict[str, Any]]:
         items: List[Dict[str, Any]] = []
-        for index, run in enumerate(runs):
+        for run in runs:
             output_text = ("ERROR: " + run.output) if run.is_error else run.output
-            output: Any = output_text
-            if index == len(runs) - 1:
-                content: List[Dict[str, Any]] = [{"type": "input_text", "text": output_text}]
-                if screenshot is not None:
-                    content.append(
-                        {
-                            "type": "input_text",
-                            "text": "Screen observation after the action:",
-                        }
-                    )
-                    content.append(self._image_block(screenshot))
-                else:
-                    content.append({"type": "input_text", "text": "[screenshot unavailable]"})
-                output = content
             items.append(
                 {
                     "type": "function_call_output",
                     "call_id": run.call_id,
-                    "output": output,
+                    "output": output_text,
                 }
             )
+
+        # The screenshot is returned as a user message rather than inside the
+        # tool output. `function_call_output` carries the textual result of a
+        # custom function tool; image parts are only defined for the built-in
+        # computer-use tool's `computer_call_output`. Servers that map the
+        # Responses API onto chat completions reject image parts here, since a
+        # chat `role: "tool"` message has no place to put them. This mirrors
+        # what the OSWorld backend already does.
+        content: List[Dict[str, Any]] = []
+        if notes:
+            content.append(
+                {
+                    "type": "input_text",
+                    "text": "Some actions were not executed: " + "; ".join(notes),
+                }
+            )
+        if screenshot is None:
+            content.append(
+                {
+                    "type": "input_text",
+                    "text": "[screenshot unavailable; the previous screen may be stale]",
+                }
+            )
+        else:
+            content.append(
+                {"type": "input_text", "text": "Screen observation after the action:"}
+            )
+            content.append(self._image_block(screenshot))
+        items.append({"role": "user", "type": "message", "content": content})
         return items
 
 

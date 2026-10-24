@@ -7,7 +7,7 @@
 openai==3.0.0
 mujoco==3.11.0
 numpy==2.4.6
-Pillow==12.3.0
+Pillow==13.0.0
 imageio==2.37.4
 imageio-ffmpeg==0.6.0
 meta-sam-parser==0.0.5

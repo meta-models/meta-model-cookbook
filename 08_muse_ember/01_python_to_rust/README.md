@@ -2,7 +2,7 @@
 
 |  |  |
 |---|---|
-| **Section** | [Muse Ember](../README.md) |
+| **Section** | [Muse Ember](https://dev.meta.ai/docs/cookbook/muse-ember) |
 | **Time to complete** | About 30–35 minutes |
 | **Model** | `muse-wonder-1.0` (planner), `muse-ember-1.0` (port-workers) |
 | **Harness** | Muse Code |

@@ -2,7 +2,7 @@
 
 |  |  |
 |---|---|
-| **Section** | [Muse Ember](../README.md) |
+| **Section** | [Muse Ember](https://dev.meta.ai/docs/cookbook/muse-ember) |
 | **Time to complete** | ~15 min, plus a few minutes to download the photos |
 | **Model** | `muse-wonder-1.0` plans and writes the pipeline; `muse-ember-1.0` runs the 16 workers and every photo request |
 | **Harness** | Muse Code (the `muse` CLI) |

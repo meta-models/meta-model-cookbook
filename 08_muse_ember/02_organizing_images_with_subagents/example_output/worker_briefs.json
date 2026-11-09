@@ -1,0 +1,114 @@
+[
+ {
+  "command_id": "shard-00",
+  "role": "ember-worker",
+  "subagent_type": "ember-worker",
+  "task_name": "shard-00",
+  "objective": "Run exactly this command in the workspace workspace and wait for it to finish: python3 pipeline.py --shard 0 --num-shards 16 . Do not edit any files. Do not run any other shard. Report the final output lines (photos processed and DONE or any BATCH FAILED lines)."
+ },
+ {
+  "command_id": "shard-01",
+  "role": "ember-worker",
+  "subagent_type": "ember-worker",
+  "task_name": "shard-01",
+  "objective": "Run exactly this command in the workspace workspace and wait for it to finish: python3 pipeline.py --shard 1 --num-shards 16 . Do not edit any files. Do not run any other shard. Report the final output lines (photos processed and DONE or any BATCH FAILED lines)."
+ },
+ {
+  "command_id": "shard-02",
+  "role": "ember-worker",
+  "subagent_type": "ember-worker",
+  "task_name": "shard-02",
+  "objective": "Run exactly this command in the workspace workspace and wait for it to finish: python3 pipeline.py --shard 2 --num-shards 16 . Do not edit any files. Do not run any other shard. Report the final output lines (photos processed and DONE or any BATCH FAILED lines)."
+ },
+ {
+  "command_id": "shard-03",
+  "role": "ember-worker",
+  "subagent_type": "ember-worker",
+  "task_name": "shard-03",
+  "objective": "Run exactly this command in the workspace workspace and wait for it to finish: python3 pipeline.py --shard 3 --num-shards 16 . Do not edit any files. Do not run any other shard. Report the final output lines (photos processed and DONE or any BATCH FAILED lines)."
+ },
+ {
+  "command_id": "shard-04",
+  "role": "ember-worker",
+  "subagent_type": "ember-worker",
+  "task_name": "shard-04",
+  "objective": "Run exactly this command in the workspace workspace and wait for it to finish: python3 pipeline.py --shard 4 --num-shards 16 . Do not edit any files. Do not run any other shard. Report the final output lines (photos processed and DONE or any BATCH FAILED lines)."
+ },
+ {
+  "command_id": "shard-05",
+  "role": "ember-worker",
+  "subagent_type": "ember-worker",
+  "task_name": "shard-05",
+  "objective": "Run exactly this command in the workspace workspace and wait for it to finish: python3 pipeline.py --shard 5 --num-shards 16 . Do not edit any files. Do not run any other shard. Report the final output lines (photos processed and DONE or any BATCH FAILED lines)."
+ },
+ {
+  "command_id": "shard-06",
+  "role": "ember-worker",
+  "subagent_type": "ember-worker",
+  "task_name": "shard-06",
+  "objective": "Run exactly this command in the workspace workspace and wait for it to finish: python3 pipeline.py --shard 6 --num-shards 16 . Do not edit any files. Do not run any other shard. Report the final output lines (photos processed and DONE or any BATCH FAILED lines)."
+ },
+ {
+  "command_id": "shard-07",
+  "role": "ember-worker",
+  "subagent_type": "ember-worker",
+  "task_name": "shard-07",
+  "objective": "Run exactly this command in the workspace workspace and wait for it to finish: python3 pipeline.py --shard 7 --num-shards 16 . Do not edit any files. Do not run any other shard. Report the final output lines (photos processed and DONE or any BATCH FAILED lines)."
+ },
+ {
+  "command_id": "shard-08",
+  "role": "ember-worker",
+  "subagent_type": "ember-worker",
+  "task_name": "shard-08",
+  "objective": "Run exactly this command in the workspace workspace and wait for it to finish: python3 pipeline.py --shard 8 --num-shards 16 . Do not edit any files. Do not run any other shard. Report the final output lines (photos processed and DONE or any BATCH FAILED lines)."
+ },
+ {
+  "command_id": "shard-09",
+  "role": "ember-worker",
+  "subagent_type": "ember-worker",
+  "task_name": "shard-09",
+  "objective": "Run exactly this command in the workspace workspace and wait for it to finish: python3 pipeline.py --shard 9 --num-shards 16 . Do not edit any files. Do not run any other shard. Report the final output lines (photos processed and DONE or any BATCH FAILED lines)."
+ },
+ {
+  "command_id": "shard-10",
+  "role": "ember-worker",
+  "subagent_type": "ember-worker",
+  "task_name": "shard-10",
+  "objective": "Run exactly this command in the workspace workspace and wait for it to finish: python3 pipeline.py --shard 10 --num-shards 16 . Do not edit any files. Do not run any other shard. Report the final output lines (photos processed and DONE or any BATCH FAILED lines)."
+ },
+ {
+  "command_id": "shard-11",
+  "role": "ember-worker",
+  "subagent_type": "ember-worker",
+  "task_name": "shard-11",
+  "objective": "Run exactly this command in the workspace workspace and wait for it to finish: python3 pipeline.py --shard 11 --num-shards 16 . Do not edit any files. Do not run any other shard. Report the final output lines (photos processed and DONE or any BATCH FAILED lines)."
+ },
+ {
+  "command_id": "shard-12",
+  "role": "ember-worker",
+  "subagent_type": "ember-worker",
+  "task_name": "shard-12",
+  "objective": "Run exactly this command in the workspace workspace and wait for it to finish: python3 pipeline.py --shard 12 --num-shards 16 . Do not edit any files. Do not run any other shard. Report the final output lines (photos processed and DONE or any BATCH FAILED lines)."
+ },
+ {
+  "command_id": "shard-13",
+  "role": "ember-worker",
+  "subagent_type": "ember-worker",
+  "task_name": "shard-13",
+  "objective": "Run exactly this command in the workspace workspace and wait for it to finish: python3 pipeline.py --shard 13 --num-shards 16 . Do not edit any files. Do not run any other shard. Report the final output lines (photos processed and DONE or any BATCH FAILED lines)."
+ },
+ {
+  "command_id": "shard-14",
+  "role": "ember-worker",
+  "subagent_type": "ember-worker",
+  "task_name": "shard-14",
+  "objective": "Run exactly this command in the workspace workspace and wait for it to finish: python3 pipeline.py --shard 14 --num-shards 16 . Do not edit any files. Do not run any other shard. Report the final output lines (photos processed and DONE or any BATCH FAILED lines)."
+ },
+ {
+  "command_id": "shard-15",
+  "role": "ember-worker",
+  "subagent_type": "ember-worker",
+  "task_name": "shard-15",
+  "objective": "Run exactly this command in the workspace workspace and wait for it to finish: python3 pipeline.py --shard 15 --num-shards 16 . Do not edit any files. Do not run any other shard. Report the final output lines (photos processed and DONE or any BATCH FAILED lines)."
+ }
+]

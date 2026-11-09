@@ -1,0 +1,15 @@
+[package]
+name = "pygments-rs"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+fancy-regex = "0.16"
+regex-automata = "0.4"
+
+[profile.release]
+opt-level = 3
+lto = true
+
+[profile.test]
+opt-level = 3

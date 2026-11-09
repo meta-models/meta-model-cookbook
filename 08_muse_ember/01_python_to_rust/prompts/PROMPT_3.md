@@ -1,0 +1,1 @@
+The held-out files are now present under ./heldout/<alias>. Final code stays frozen at the commit you froze at the end of Prompt 2. Score all 16 languages with the checker, without changes to code, tests, inputs or reference in response. Report the held-out scores and any mismatch; do not fix or omit a failing file.

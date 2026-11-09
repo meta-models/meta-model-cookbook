@@ -1,0 +1,498 @@
+[
+  {
+    "alias": "java",
+    "repo": "https://github.com/square/javapoet",
+    "commit": "b9017a9503b76e11b4ad4c1a9f050e2d29112cb0",
+    "path": "src/main/java/com/squareup/javapoet/AnnotationSpec.java",
+    "license": "Apache-2.0",
+    "sha256": "11c705a612adea403097a5988dd3790be0815c6e485d79f9f20070ba9b4f8ccd"
+  },
+  {
+    "alias": "java",
+    "repo": "https://github.com/square/javapoet",
+    "commit": "b9017a9503b76e11b4ad4c1a9f050e2d29112cb0",
+    "path": "src/main/java/com/squareup/javapoet/ParameterizedTypeName.java",
+    "license": "Apache-2.0",
+    "sha256": "d14dc1dba47318d3a23f7a175bfb6ef9693ca06489d05d2c682891279513ed52"
+  },
+  {
+    "alias": "java",
+    "repo": "https://github.com/square/javapoet",
+    "commit": "b9017a9503b76e11b4ad4c1a9f050e2d29112cb0",
+    "path": "src/test/java/com/squareup/javapoet/FieldSpecTest.java",
+    "license": "Apache-2.0",
+    "sha256": "c75f2f83abc0e6f3c09b71e9077e369e95f5b80f55c27e613bfc625f79a2dca0"
+  },
+  {
+    "alias": "java",
+    "repo": "https://github.com/square/javapoet",
+    "commit": "b9017a9503b76e11b4ad4c1a9f050e2d29112cb0",
+    "path": "src/test/java/com/squareup/javapoet/UtilTest.java",
+    "license": "Apache-2.0",
+    "sha256": "d1c34cb4033c4e8de608c6576fc5d54a1a0a53ebb88665c8138042befe0cec5e"
+  },
+  {
+    "alias": "c",
+    "repo": "https://github.com/libuv/libuv",
+    "commit": "716390fe9e0a0ef38ac26e18d894672fc35dc870",
+    "path": "docs/code/cgi/main.c",
+    "license": "MIT",
+    "sha256": "c62ca0fab0c83c7ee496e6232624d65ed236cbb1e470bc83ae2fdbd5ad461419"
+  },
+  {
+    "alias": "c",
+    "repo": "https://github.com/libuv/libuv",
+    "commit": "716390fe9e0a0ef38ac26e18d894672fc35dc870",
+    "path": "test/benchmark-getaddrinfo.c",
+    "license": "MIT",
+    "sha256": "9d54ca778d7364c720d1cc9769455dffe36a2dfbbd801031f71ad04c3aaf5768"
+  },
+  {
+    "alias": "c",
+    "repo": "https://github.com/libuv/libuv",
+    "commit": "716390fe9e0a0ef38ac26e18d894672fc35dc870",
+    "path": "test/test-poll-multiple-handles.c",
+    "license": "MIT",
+    "sha256": "2846480314a286d5980a069aa6de66c6f6df68f336ec4d4a626d9daef4d66166"
+  },
+  {
+    "alias": "c",
+    "repo": "https://github.com/libuv/libuv",
+    "commit": "716390fe9e0a0ef38ac26e18d894672fc35dc870",
+    "path": "test/test-write-cancel.c",
+    "license": "MIT",
+    "sha256": "815090afa6b7ba3bb914616893bef957722935a2bbbf23792f1500ca882da5f1"
+  },
+  {
+    "alias": "cpp",
+    "repo": "https://github.com/fmtlib/fmt",
+    "commit": "4ed3535092a96ac9f56fab80df83416d51bcc78e",
+    "path": "include/fmt/args.h",
+    "license": "MIT",
+    "sha256": "b105f72e62d7eb403c12c4c0ba22a94d42344b20206664814bf9568c6785fc83"
+  },
+  {
+    "alias": "cpp",
+    "repo": "https://github.com/fmtlib/fmt",
+    "commit": "4ed3535092a96ac9f56fab80df83416d51bcc78e",
+    "path": "test/args-test.cc",
+    "license": "MIT",
+    "sha256": "488129bd9c4083f3e1a641e57dca68a67266778818cd7a1e0d9f2d5d9bf5f245"
+  },
+  {
+    "alias": "cpp",
+    "repo": "https://github.com/fmtlib/fmt",
+    "commit": "4ed3535092a96ac9f56fab80df83416d51bcc78e",
+    "path": "test/gtest-extra.cc",
+    "license": "MIT",
+    "sha256": "a88f5287ce7416f9756b977c9f78e55265d41887f103836e4b435c7f7dbc9758"
+  },
+  {
+    "alias": "cpp",
+    "repo": "https://github.com/fmtlib/fmt",
+    "commit": "4ed3535092a96ac9f56fab80df83416d51bcc78e",
+    "path": "test/xchar-test.cc",
+    "license": "MIT",
+    "sha256": "65606db7d440fa36b23a58d983ce664ca47ceb7c7c8794ab424cc8ab6f66c4e5"
+  },
+  {
+    "alias": "csharp",
+    "repo": "https://github.com/JamesNK/Newtonsoft.Json",
+    "commit": "52fa3aef1f2cadcd3a3f874251eddc98d3efbbaa",
+    "path": "Src/Newtonsoft.Json/Bson/BsonBinaryType.cs",
+    "license": "MIT",
+    "sha256": "8b27e84d869597835438d46a20a60651687073ce9f10fd78505cc9451e2b4473"
+  },
+  {
+    "alias": "csharp",
+    "repo": "https://github.com/JamesNK/Newtonsoft.Json",
+    "commit": "52fa3aef1f2cadcd3a3f874251eddc98d3efbbaa",
+    "path": "Src/Newtonsoft.Json.Tests/Converters/ObjectIdConverterTests.cs",
+    "license": "MIT",
+    "sha256": "3fce4bf6680ca74e0e0e44fcc5a0a00708dc36dbad565d14875668d0be2f219d"
+  },
+  {
+    "alias": "csharp",
+    "repo": "https://github.com/JamesNK/Newtonsoft.Json",
+    "commit": "52fa3aef1f2cadcd3a3f874251eddc98d3efbbaa",
+    "path": "Src/Newtonsoft.Json.Tests/Linq/JValueTests.cs",
+    "license": "MIT",
+    "sha256": "31d6799aa1203565780339d3ad6e59aca072c56ee4b5a70762bbed232246236a"
+  },
+  {
+    "alias": "csharp",
+    "repo": "https://github.com/JamesNK/Newtonsoft.Json",
+    "commit": "52fa3aef1f2cadcd3a3f874251eddc98d3efbbaa",
+    "path": "Src/Newtonsoft.Json.Tests/Utilities/StringUtilsTests.cs",
+    "license": "MIT",
+    "sha256": "d8f1eada97ecbf52e592de7cb5ef93ebc55699fca1c8d3993da3aa59ab66a31b"
+  },
+  {
+    "alias": "go",
+    "repo": "https://github.com/spf13/cobra",
+    "commit": "adbc8813901bba65827259daa8e22ff94ec1f30e",
+    "path": "active_help.go",
+    "license": "Apache-2.0",
+    "sha256": "92bde33086d33e413b9ac945ddb38f7487f9ce91067453a7ce97fd62fa59cdc5"
+  },
+  {
+    "alias": "go",
+    "repo": "https://github.com/spf13/cobra",
+    "commit": "adbc8813901bba65827259daa8e22ff94ec1f30e",
+    "path": "completions.go",
+    "license": "Apache-2.0",
+    "sha256": "b28a4f6c509acde7367323e835cfb4f4939fe656dd3214320d76f53e91743c89"
+  },
+  {
+    "alias": "go",
+    "repo": "https://github.com/spf13/cobra",
+    "commit": "adbc8813901bba65827259daa8e22ff94ec1f30e",
+    "path": "doc/util.go",
+    "license": "Apache-2.0",
+    "sha256": "472bf86d75b3d9d73ba036391d7ad91a10bd76604d5333eebec659efbd3a9b6f"
+  },
+  {
+    "alias": "go",
+    "repo": "https://github.com/spf13/cobra",
+    "commit": "adbc8813901bba65827259daa8e22ff94ec1f30e",
+    "path": "zsh_completions.go",
+    "license": "Apache-2.0",
+    "sha256": "a80998389020b259308582d539cb3ae0979f83b55e8ffa68b20c46b015feae24"
+  },
+  {
+    "alias": "rust",
+    "repo": "https://github.com/BurntSushi/ripgrep",
+    "commit": "91f5d22ef48bde459d90a8c7dbeab416e97d0f2b",
+    "path": "build.rs",
+    "license": "MIT OR Unlicense",
+    "sha256": "07d72d8929ecd1cc2277e7d1f16092521c9160c92cca9544a682b275bd53d955"
+  },
+  {
+    "alias": "rust",
+    "repo": "https://github.com/BurntSushi/ripgrep",
+    "commit": "91f5d22ef48bde459d90a8c7dbeab416e97d0f2b",
+    "path": "crates/globset/src/pathutil.rs",
+    "license": "MIT OR Unlicense",
+    "sha256": "5780ad5ec2bc89a42201a1532295e06a90f493929583c453f135759b39a70fa5"
+  },
+  {
+    "alias": "rust",
+    "repo": "https://github.com/BurntSushi/ripgrep",
+    "commit": "91f5d22ef48bde459d90a8c7dbeab416e97d0f2b",
+    "path": "crates/printer/src/stats.rs",
+    "license": "MIT OR Unlicense",
+    "sha256": "fa7c96c4dd83892f19d9bc5d9a0e486c6d7b252f6c7f507da3cd090809bb48a1"
+  },
+  {
+    "alias": "rust",
+    "repo": "https://github.com/BurntSushi/ripgrep",
+    "commit": "91f5d22ef48bde459d90a8c7dbeab416e97d0f2b",
+    "path": "tests/util.rs",
+    "license": "MIT OR Unlicense",
+    "sha256": "6862edaf5adad5eff8b7bf3c50ed28c221c0212fe733b22387d1f4f09909b447"
+  },
+  {
+    "alias": "lua",
+    "repo": "https://github.com/luarocks/luarocks",
+    "commit": "85bfe36c812465b2f377877939d884a4db829a25",
+    "path": "spec/add_spec.lua",
+    "license": "MIT",
+    "sha256": "f86398cdd37d1d9faf3ed5335947f0b6519bdea59eb2c361211e69589bd03e45"
+  },
+  {
+    "alias": "lua",
+    "repo": "https://github.com/luarocks/luarocks",
+    "commit": "85bfe36c812465b2f377877939d884a4db829a25",
+    "path": "src/luarocks/admin/cmd/add.lua",
+    "license": "MIT",
+    "sha256": "d92969e055a8cd7a67af5fb8336ace59eccfafc92648f217e4d2d838516e77fd"
+  },
+  {
+    "alias": "lua",
+    "repo": "https://github.com/luarocks/luarocks",
+    "commit": "85bfe36c812465b2f377877939d884a4db829a25",
+    "path": "src/luarocks/fetch/git.lua",
+    "license": "MIT",
+    "sha256": "11ef43e7b078f4bdff42e725e533c52b9b3d7ef70108d7c66033cb4d5c1b1022"
+  },
+  {
+    "alias": "lua",
+    "repo": "https://github.com/luarocks/luarocks",
+    "commit": "85bfe36c812465b2f377877939d884a4db829a25",
+    "path": "win32/pe-parser.lua",
+    "license": "MIT",
+    "sha256": "37639a21c0cc31d10baa045a35bd8ccb2ff6a3cda7a14bccc0215cf516456878"
+  },
+  {
+    "alias": "swift",
+    "repo": "https://github.com/apple/swift-algorithms",
+    "commit": "5b7143f8e291dee0e14c118fd0212487f0b37af5",
+    "path": "Sources/Algorithms/AdjacentPairs.swift",
+    "license": "Apache-2.0",
+    "sha256": "3918587a45e298c5dd57e1f4adfcaaaa6d10a3301a5c759ec4a6f25cdc1ebce2"
+  },
+  {
+    "alias": "swift",
+    "repo": "https://github.com/apple/swift-algorithms",
+    "commit": "5b7143f8e291dee0e14c118fd0212487f0b37af5",
+    "path": "Sources/Algorithms/Product.swift",
+    "license": "Apache-2.0",
+    "sha256": "32a365e764dc346d5109a9967fe0fec3d90127487b3bfc9bce96e41b7094e1ef"
+  },
+  {
+    "alias": "swift",
+    "repo": "https://github.com/apple/swift-algorithms",
+    "commit": "5b7143f8e291dee0e14c118fd0212487f0b37af5",
+    "path": "Tests/SwiftAlgorithmsTests/IntersperseTests.swift",
+    "license": "Apache-2.0",
+    "sha256": "5ac4df1c9d97440970709eeb7799ad8ac651232fbfb0d5e0ad3121676c87245c"
+  },
+  {
+    "alias": "swift",
+    "repo": "https://github.com/apple/swift-algorithms",
+    "commit": "5b7143f8e291dee0e14c118fd0212487f0b37af5",
+    "path": "Tests/SwiftAlgorithmsTests/WindowsTests.swift",
+    "license": "Apache-2.0",
+    "sha256": "9e5bdf4227c93ade2311a55cce8434a80b4085181894988871c0fb6fd71625bb"
+  },
+  {
+    "alias": "kotlin",
+    "repo": "https://github.com/square/okio",
+    "commit": "61d53efb0a3cdabd90332cf3226f3e0f44525b0f",
+    "path": "build-support/src/main/kotlin/BuildSupport.kt",
+    "license": "Apache-2.0",
+    "sha256": "9cd38cfc01aa0aa5be8d80a579235e4faae3f762a3089e63f8416493d148a362"
+  },
+  {
+    "alias": "kotlin",
+    "repo": "https://github.com/square/okio",
+    "commit": "61d53efb0a3cdabd90332cf3226f3e0f44525b0f",
+    "path": "okio/src/jvmMain/kotlin/okio/ByteString.kt",
+    "license": "Apache-2.0",
+    "sha256": "8dc916b3a6d3318619d4acb4f6e377ec9c08171d247b8b2e473404a3b206c9e9"
+  },
+  {
+    "alias": "kotlin",
+    "repo": "https://github.com/square/okio",
+    "commit": "61d53efb0a3cdabd90332cf3226f3e0f44525b0f",
+    "path": "okio/src/jvmTest/kotlin/okio/internal/SetBitsOrZeroTest.kt",
+    "license": "Apache-2.0",
+    "sha256": "a69be1a8f7d3765e6825d078a98e55cf287488b01a6bed34675a3aceafe26203"
+  },
+  {
+    "alias": "kotlin",
+    "repo": "https://github.com/square/okio",
+    "commit": "61d53efb0a3cdabd90332cf3226f3e0f44525b0f",
+    "path": "samples/src/jvmTest/java/okio/samples/SourceMarkerTest.kt",
+    "license": "Apache-2.0",
+    "sha256": "8377ee84b58dd4772c0fea4e04a6542c41a968b1ac566a4a72fff4d73b63c0a0"
+  },
+  {
+    "alias": "scala",
+    "repo": "https://github.com/scopt/scopt",
+    "commit": "270222e9ba8f32d2d71509fd9ceeaa9c35054347",
+    "path": "jvm/src/main/scala/PlatformReadInstances.scala",
+    "license": "MIT",
+    "sha256": "fd9a26d2fdd0b98804f3c41858db9994d2292e876c1709a3ca4824460846ba25"
+  },
+  {
+    "alias": "scala",
+    "repo": "https://github.com/scopt/scopt",
+    "commit": "270222e9ba8f32d2d71509fd9ceeaa9c35054347",
+    "path": "shared/src/main/scala/scopt/ORunner.scala",
+    "license": "MIT",
+    "sha256": "1797b4a10150c7596c01952fe831bd29b78653c668cd13288e784317251073cf"
+  },
+  {
+    "alias": "scala",
+    "repo": "https://github.com/scopt/scopt",
+    "commit": "270222e9ba8f32d2d71509fd9ceeaa9c35054347",
+    "path": "shared/src/test/scala/scopttest/ImmutableParserSpec.scala",
+    "license": "MIT",
+    "sha256": "7736509d19a74955c8ef914661dba88a613b3008b7f5ebe9ef4af29740e9acd2"
+  },
+  {
+    "alias": "scala",
+    "repo": "https://github.com/scopt/scopt",
+    "commit": "270222e9ba8f32d2d71509fd9ceeaa9c35054347",
+    "path": "shared/src/test/scala/scopttest/MutableParserSpec.scala",
+    "license": "MIT",
+    "sha256": "f7f83c1058a410e2479b73c84a5d28156214271b6ddd3cf9f7932a2836d24125"
+  },
+  {
+    "alias": "perl",
+    "repo": "https://github.com/mojolicious/mojo",
+    "commit": "4146e4024939cfbe39d159b5e908c36f6ad6188a",
+    "path": "lib/Mojo/Asset/File.pm",
+    "license": "Artistic-2.0",
+    "sha256": "9fe4a41899574bfbf3deccd3ae09063f79b161999401af515247d567d4ac10d0"
+  },
+  {
+    "alias": "perl",
+    "repo": "https://github.com/mojolicious/mojo",
+    "commit": "4146e4024939cfbe39d159b5e908c36f6ad6188a",
+    "path": "lib/Mojo/Reactor/EV.pm",
+    "license": "Artistic-2.0",
+    "sha256": "2b8cb79e567e31416a01f2753510734f89632c2045a6e4f62da7fe9eb4ba4000"
+  },
+  {
+    "alias": "perl",
+    "repo": "https://github.com/mojolicious/mojo",
+    "commit": "4146e4024939cfbe39d159b5e908c36f6ad6188a",
+    "path": "lib/Mojolicious/Command/daemon.pm",
+    "license": "Artistic-2.0",
+    "sha256": "f17dace1413ae60a9642f749050bd0bc66943729fc137a2b0b1d79cfce7b2c24"
+  },
+  {
+    "alias": "perl",
+    "repo": "https://github.com/mojolicious/mojo",
+    "commit": "4146e4024939cfbe39d159b5e908c36f6ad6188a",
+    "path": "t/mojolicious/lib/SingleFileTestApp.pm",
+    "license": "Artistic-2.0",
+    "sha256": "668e68fe961de17f4fe675d69ad7f659d2bf091d13025474621aa9480fa20532"
+  },
+  {
+    "alias": "css",
+    "repo": "https://github.com/mojolicious/mojo",
+    "commit": "4146e4024939cfbe39d159b5e908c36f6ad6188a",
+    "path": "lib/Mojolicious/resources/public/mojo/mojo.css",
+    "license": "Artistic-2.0",
+    "sha256": "77bd9b98cd0bc8a07f51b24954fc24434e6ea98bdaac875f9b692e500a2767cf"
+  },
+  {
+    "alias": "css",
+    "repo": "https://github.com/necolas/normalize.css",
+    "commit": "fc091cce1534909334c1911709a39c22d406977b",
+    "path": "normalize.css",
+    "license": "MIT",
+    "sha256": "580818700724d42d7fcc4979b0197971fca1c6d2e0286769237a0ac897df5512"
+  },
+  {
+    "alias": "haskell",
+    "repo": "https://github.com/haskell/aeson",
+    "commit": "42190167dbe120578a06d67b13b4d96991b34e01",
+    "path": "src/Data/Aeson/Types/Generic.hs",
+    "license": "BSD-3-Clause",
+    "sha256": "1243ace70a2231c2f7fbb4f4b97cd0d8908024fd9dc824881b08ca05ba88f03c"
+  },
+  {
+    "alias": "haskell",
+    "repo": "https://github.com/haskell/aeson",
+    "commit": "42190167dbe120578a06d67b13b4d96991b34e01",
+    "path": "src/Data/Aeson/Decoding.hs",
+    "license": "BSD-3-Clause",
+    "sha256": "74660a6f62c90f973349780b625a616970fc9a689f704c8c1ffebfed2be78f6a"
+  },
+  {
+    "alias": "haskell",
+    "repo": "https://github.com/haskell/aeson",
+    "commit": "42190167dbe120578a06d67b13b4d96991b34e01",
+    "path": "tests/Options.hs",
+    "license": "BSD-3-Clause",
+    "sha256": "c097e45d9e34ed47babd7ed7d55d65fcd9f7e3ee843213df9d5b0e13be19aa5e"
+  },
+  {
+    "alias": "haskell",
+    "repo": "https://github.com/haskell/aeson",
+    "commit": "42190167dbe120578a06d67b13b4d96991b34e01",
+    "path": "text-iso8601/tests/text-iso8601-tests.hs",
+    "license": "BSD-3-Clause",
+    "sha256": "8611e2b55b8848900dcc850c1c09624c4f4557cea848222743371bd36d15ffe8"
+  },
+  {
+    "alias": "sql",
+    "repo": "https://github.com/jOOQ/sakila",
+    "commit": "e089a5b1ec9af0df7a9c6a5d47d49fa1736a4e84",
+    "path": "cockroachdb-sakila-db/cockroachdb-sakila-schema.sql",
+    "license": "BSD-2-Clause",
+    "sha256": "1059e12da0c5193b3ed26e85be2650c6025cba0ce8dcb3084e1509df83c98f12"
+  },
+  {
+    "alias": "sql",
+    "repo": "https://github.com/jOOQ/sakila",
+    "commit": "e089a5b1ec9af0df7a9c6a5d47d49fa1736a4e84",
+    "path": "oracle-sakila-db/oracle-sakila-schema-pl-sql.sql",
+    "license": "BSD-2-Clause",
+    "sha256": "f77ccbb8af54b2e452757815b2f15aac25d09a1b2f53de2a36386dff75b34e44"
+  },
+  {
+    "alias": "sql",
+    "repo": "https://github.com/jOOQ/sakila",
+    "commit": "e089a5b1ec9af0df7a9c6a5d47d49fa1736a4e84",
+    "path": "sql-server-sakila-db/sql-server-sakila-delete-data.sql",
+    "license": "BSD-2-Clause",
+    "sha256": "d105b22259cb0fd2ad6f9bfd351e8b552d3670cbb1783e5196eb49be7b0c16c0"
+  },
+  {
+    "alias": "sql",
+    "repo": "https://github.com/jOOQ/sakila",
+    "commit": "e089a5b1ec9af0df7a9c6a5d47d49fa1736a4e84",
+    "path": "yugabytedb-sakila-db/yugabytedb-sakila-schema.sql",
+    "license": "BSD-2-Clause",
+    "sha256": "98da838c3f249038de560b76c40a15d2ffcf656e55ee0fac8a37d43eb68f2c6c"
+  },
+  {
+    "alias": "r",
+    "repo": "https://github.com/tidyverse/dplyr",
+    "commit": "819c99f7284b3a413b391c60bea49ae7bfb8bafc",
+    "path": "R/across.R",
+    "license": "MIT",
+    "sha256": "b1d529dd2f4c4e031af27bc1a388a71aad6285a8e2ce949cefe0782f0a412c67"
+  },
+  {
+    "alias": "r",
+    "repo": "https://github.com/tidyverse/dplyr",
+    "commit": "819c99f7284b3a413b391c60bea49ae7bfb8bafc",
+    "path": "R/join-cols.R",
+    "license": "MIT",
+    "sha256": "2b7a5e93c9bbc2e0148b57e695f2e0813a4948f7f575a6dbeb3fb9a59e850d96"
+  },
+  {
+    "alias": "r",
+    "repo": "https://github.com/tidyverse/dplyr",
+    "commit": "819c99f7284b3a413b391c60bea49ae7bfb8bafc",
+    "path": "tests/testthat/test-case-when.R",
+    "license": "MIT",
+    "sha256": "df81202f1a0d864d77dbeb568087df819ac7114f43f19f1dff06d67338b0033a"
+  },
+  {
+    "alias": "r",
+    "repo": "https://github.com/tidyverse/dplyr",
+    "commit": "819c99f7284b3a413b391c60bea49ae7bfb8bafc",
+    "path": "tests/testthat/test-when.R",
+    "license": "MIT",
+    "sha256": "76ffc5956d4cb1b0dd653360e8151ff00f8e8b03e01620ea2c6c4689a1bda173"
+  },
+  {
+    "alias": "javascript",
+    "repo": "https://github.com/expressjs/express",
+    "commit": "43fca52d28a422c8be48fd489cbd4f2d6152bab6",
+    "path": "lib/application.js",
+    "license": "MIT",
+    "sha256": "6d7e08355025786982d17042fc0355b6a5e9339545dc27e2782b3aaa28a7bc04"
+  },
+  {
+    "alias": "javascript",
+    "repo": "https://github.com/expressjs/express",
+    "commit": "43fca52d28a422c8be48fd489cbd4f2d6152bab6",
+    "path": "lib/response.js",
+    "license": "MIT",
+    "sha256": "efe24afe2978d0bf2ad52d5b163a7af0d25d965e5dfc75979c4fcc883c60a510"
+  },
+  {
+    "alias": "javascript",
+    "repo": "https://github.com/axios/axios",
+    "commit": "1fcaf82dd3637afd57454fc5abd5e3458f619bcf",
+    "path": "lib/core/Axios.js",
+    "license": "MIT",
+    "sha256": "80d1d5e07eb55f5a697f0e45c8297a4067b53d2d1cb562ac28d3e7667e42e12c"
+  },
+  {
+    "alias": "javascript",
+    "repo": "https://github.com/chalk/chalk",
+    "commit": "72110019e147683f60e13fa0ff5c14a0c27cd9fe",
+    "path": "source/index.js",
+    "license": "MIT",
+    "sha256": "2eb26f8fd8f99228650de7cb5e502b9ab66ad2ffc333145eba86756983e80748"
+  }
+]

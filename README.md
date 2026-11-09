@@ -150,6 +150,15 @@ Turn segmentation masks and video tracks into finished applications.
 | 02 | [Video to animated sticker pack](07_sam/02_video_to_sticker_pack/) | Track an animal through a video and export transparent, messaging-ready animated stickers. |
 | 03 | [Multi-speaker headlocked captions](07_sam/03_headlocked_speech_bubble_captions/) | Upload a conversation, map diarized voices to SAM-tracked people, and download the captioned video. |
 
+### [8. Muse Ember](08_muse_ember/)
+
+Pair Muse Ember with a larger model that plans, and let Muse Ember run the high-volume work: parallel subagents and batch jobs.
+
+| # | Recipe | What it does |
+|---|--------|--------------|
+| 01 | [Port Python to Rust with Muse Wonder and Muse Ember](08_muse_ember/01_python_to_rust/) | Muse Wonder plans and checks the work; Muse Ember workers port 16 Pygments lexers from Python to Rust in parallel. |
+| 02 | [Organizing images with subagents](08_muse_ember/02_organizing_images_with_subagents/) | One prompt in Muse Code: Muse Wonder writes the photo pipeline, and 16 Muse Ember subagents run it to caption, rename and sort a 10,000-photo camera roll. |
+
 ## License
 
 See [LICENSE](LICENSE) for details.
